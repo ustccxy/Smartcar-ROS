@@ -30,7 +30,7 @@ class APP():
             self.pub_yunle_cmd.publish(msg_ecu)
         elif self.vehicle == "race_car":
             msg_twist = Twist()
-            msg_twist.linear.x = 1.0
+            msg_twist.linear.x = 0.0
             msg_twist.angular.z = 0.0
             self.pub_race_cmd.publish(msg_twist)
 

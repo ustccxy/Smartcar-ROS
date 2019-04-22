@@ -3,6 +3,10 @@
         <param name="port_left" value="/dev/ttyUSB1"/>
         <param name="port_right" value="/dev/ttyUSB0"/>
         <param name="baud" value="115200"/>
+        <param name="Q_Covariance_left" type="double" value="0.5" />
+        <param name="R_Covariance_left" type="double" value="0.4" />
+        <param name="Q_Covariance_right" type="double" value="0.5" />
+        <param name="R_Covariance_right" type="double" value="0.4" />
     </node>
 
     <!-- <node pkg="follower_ultrasonic" type="sonic_driver.py" name="sonic_driver" output="screen">
