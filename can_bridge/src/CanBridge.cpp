@@ -54,11 +54,13 @@ void Can_app::ecu_cb(const can_msgs::ecu& in_msg)
     static double pre_steer = 0;
     SendMsg sMsg;
     sMsg.setDriveMode(DriveMode::AUTO_MODE); // 驾驶模式
+    //printf("----------------\n");
     sMsg.setSpeed(in_msg.motor); // 速度
     unsigned int shift = in_msg.shift;
     sMsg.setShiftLevel(ShiftLevel(shift)); //档位
     double steer = (in_msg.steer + pre_steer) / 2.0;
     sMsg.setWheelAngle(steer); //角度
+    //printf("steer: %d\n", int(steer));
     pre_steer = in_msg.steer;
     sMsg.setEBrake(false); //刹车
     if (pCanClient == NULL) {
