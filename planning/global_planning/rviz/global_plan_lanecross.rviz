@@ -26,7 +26,7 @@ Panels:
     Experimental: false
     Name: Time
     SyncMode: 0
-    SyncSource: static_map
+    SyncSource: ""
   - Class: rviz/Views
     Expanded:
       - /Current View1
@@ -274,7 +274,7 @@ Visualization Manager:
       Marker Topic: /global_path/static_path
       Name: globalPath_staticPath
       Namespaces:
-        {}
+        "": true
       Queue Size: 100
       Value: true
   Enabled: true
@@ -311,11 +311,11 @@ Visualization Manager:
       Invert Z Axis: false
       Name: Current View
       Near Clip Distance: 0.00999999978
-      Scale: 9.05189037
+      Scale: 5.10853386
       Target Frame: <Fixed Frame>
       Value: TopDownOrtho (rviz)
-      X: 22.716135
-      Y: 6.86593008
+      X: -21.6886253
+      Y: 65.9078217
     Saved:
       - Angle: 0
         Class: rviz/TopDownOrtho

@@ -4,7 +4,7 @@
  * @Github: https://github.com/sunmiaozju
  * @LastEditors: sunm
  * @Date: 2019-03-25 15:15:47
- * @LastEditTime: 2019-04-09 15:34:37
+ * @LastEditTime: 2019-04-02 16:40:23
  */
 
 #ifndef CAN_BRIDGE_H
@@ -12,7 +12,6 @@
 
 #include "CanClient.h"
 #include <can_msgs/battery.h>
-#include <can_msgs/brake.h>
 #include <can_msgs/ecu.h>
 #include <can_msgs/vehicle_status.h>
 #include <iostream>
@@ -37,8 +36,6 @@ private:
 
     friend class LoggingListener;
 
-    bool brake;
-
 public:
     Can_app();
 
@@ -47,8 +44,6 @@ public:
     ~Can_app() = default;
 
     void ecu_cb(const can_msgs::ecu& in_msg);
-
-    void brake_cb(const can_msgs::brake& in_msg);
 
     void initROS();
 
