@@ -36,7 +36,7 @@ bool NDTLocalization::init()
     pnh_.param<std::string>("base_frame", param_base_frame_, std::string("/base_link"));
     pnh_.param<std::string>("laser_frame", param_laser_frame_, std::string("/laser"));
     pnh_.param<std::string>("map_topic", param_map_topic_, std::string("/map"));
-    pnh_.param<std::string>("odom_topic", param_odom_topic_, std::string("/odom"));
+    pnh_.param<std::string>("odom_topic", param_odom_topic_, std::string("/odomImu/odom_imu"));
     pnh_.param<std::string>("lidar_topic", param_lidar_topic_, std::string("/velodyne_points"));
     std::cout << "lidar topic is " << param_lidar_topic_ << std::endl;
 
@@ -234,7 +234,7 @@ void NDTLocalization::init_pose_with_param()
  */
 bool NDTLocalization::load_map(std::string map_file)
 {
-    pub_global_map = nh_.advertise<sensor_msgs::PointCloud2>("/globalmap/debug_pc", 10);
+    pub_global_map = nh_.advertise<sensor_msgs::PointCloud2>("/map/point_cloud", 10);
     sensor_msgs::PointCloud2::Ptr msg_globalmap(new sensor_msgs::PointCloud2);
     pcl::io::loadPCDFile(map_file, *msg_globalmap);
     pcl::fromROSMsg(*msg_globalmap, model_pc_);

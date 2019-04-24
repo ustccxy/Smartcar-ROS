@@ -193,7 +193,7 @@ bool IMU::init()
 
 void IMU::poseCB(const geometry_msgs::PoseStampedConstPtr& msg)
 {
-    ROS_WARN_STREAM("odom_imu -> received current_pose");
+    // ROS_WARN_STREAM("odom_imu -> received current_pose");
     static int waitNum = 10;
     static int cnt = 0;
     if (cnt < waitNum) {
@@ -288,7 +288,7 @@ void IMU::imuCB(const sensor_msgs::Imu::ConstPtr& msg)
     // current_pose_.z += current_vel_z_ * diff_time + accZ * diff_time * diff_time / 2.0;
     current_pose_.x += cur_vel_.twist.linear.x * std::cos(current_pose_.yaw) * diff_time;
     current_pose_.y += cur_vel_.twist.linear.x * std::sin(current_pose_.yaw) * diff_time;
-    current_pose_.z = 0.;
+    current_pose_.z = 0.0;
 
     current_vel_x_ += accX * diff_time;
     current_vel_y_ += accY * diff_time;

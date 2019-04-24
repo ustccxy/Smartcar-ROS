@@ -80,7 +80,7 @@ void PurePursuitNode::run()
         publishControlCommandStamped(can_get_curvature, curvature);
 
         // for visualization with Rviz
-        // visualInRviz();
+        visualInRviz();
 
         is_pose_set_ = false;
         // is_waypoint_set_ = false;
@@ -520,7 +520,7 @@ void PurePursuitNode::visualInRviz()
     msg_car_marker.scale.y = 0.6;
     msg_car_marker.scale.z = 0.6;
     msg_car_marker.mesh_use_embedded_materials = true;
-    msg_car_marker.mesh_resource = "package://car_model/ferrari/dae.DAE";
-    pub_car_model.publish(msg_car_marker);
+    //msg_car_marker.mesh_resource = "package://car_model/ferrari/dae.DAE";
+    //pub_car_model.publish(msg_car_marker);
 }
 } // namespace waypoint_follower
