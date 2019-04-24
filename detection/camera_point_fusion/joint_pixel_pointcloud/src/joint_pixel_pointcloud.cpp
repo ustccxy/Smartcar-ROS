@@ -65,10 +65,10 @@ void PixelCloudFusion::IntrinsicsCallback(const sensor_msgs::CameraInfo& intrins
 
 void PixelCloudFusion::CloudCallback(const sensor_msgs::PointCloud2::ConstPtr& cloud_msg)
 {
-    if (current_frame.empty() || image_frame_id == "") {
-        ROS_INFO("joint_pixel_pointcloud : waiting for image frame ");
-        return;
-    }
+    //if (current_frame.empty() || image_frame_id == "") {
+    //    ROS_INFO("joint_pixel_pointcloud : waiting for image frame ");
+    //    return;
+    //}
 
     if (!camera_lidar_tf_ok_) {
         // 从tf树里面寻找变换关系
@@ -114,10 +114,16 @@ void PixelCloudFusion::CloudCallback(const sensor_msgs::PointCloud2::ConstPtr& c
             colored_3d_point.y = in_cloud->points[i].y;
             colored_3d_point.z = in_cloud->points[i].z;
 
-            cv::Vec3b rgb_pixel = current_frame.at<cv::Vec3b>(row, col);
-            colored_3d_point.r = rgb_pixel[2] * 2;
-            colored_3d_point.g = rgb_pixel[1] * 2;
-            colored_3d_point.b = rgb_pixel[0] * 2;
+            //cv::Vec3b rgb_pixel = current_frame.at<cv::Vec3b>(row, col);
+            //colored_3d_point.r = rgb_pixel[2] * 2;
+            //colored_3d_point.g = rgb_pixel[1] * 2;
+            //colored_3d_point.b = rgb_pixel[0] * 2;
+            //out_cloud->points.push_back(colored_3d_point);
+            
+            colored_3d_point.r = 255;
+            colored_3d_point.g = 0;
+            colored_3d_point.b = 0;
+            
             out_cloud->points.push_back(colored_3d_point);
         }
 
