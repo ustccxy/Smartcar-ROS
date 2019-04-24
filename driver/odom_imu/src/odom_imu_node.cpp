@@ -9,25 +9,33 @@ int main(int argc, char** argv)
 
     ros::NodeHandle nh;
     ros::NodeHandle pnh("~");
-    bool use_imu_only_;
-    pnh.param<bool>("use_imu_only_", use_imu_only_, "false");
-    if (use_imu_only_) {
-        ROS_WARN_STREAM("odom_imu -> Use imu only");
-        IMU odom_imu(nh, pnh);
-        if (!odom_imu.init()) {
-            ROS_ERROR("Cannot init OdomImu!");
-            exit(-1);
-        }
-        ros::spin();
-    } else {
-        ROS_WARN_STREAM("odom_imu -> Use odom imu");
-        OdomImu odom_imu(nh, pnh);
-        if (!odom_imu.init()) {
-            ROS_ERROR("Cannot init OdomImu!");
-            exit(-1);
-        }
-        ros::spin();
+    // bool use_imu_only_;
+    // pnh.param<bool>("use_imu_only_", use_imu_only_, "false");
+    // if (use_imu_only_) {
+    //     ROS_WARN_STREAM("odom_imu -> Use imu only");
+    //     IMU odom_imu(nh, pnh);
+    //     if (!odom_imu.init()) {
+    //         ROS_ERROR("Cannot init OdomImu!");
+    //         exit(-1);
+    //     }
+    //     ros::spin();
+    // } else {
+    //     ROS_WARN_STREAM("odom_imu -> Use odom imu");
+    //     OdomImu odom_imu(nh, pnh);
+    //     if (!odom_imu.init()) {
+    //         ROS_ERROR("Cannot init OdomImu!");
+    //         exit(-1);
+    //     }
+    //     ros::spin();
+    // }
+
+    OdomImu odom_imu(nh, pnh);
+    if (!odom_imu.init()) {
+        ROS_ERROR("Cannot init OdomImu!");
+        exit(-1);
     }
+
+    ros::spin();
 
     return 0;
 }

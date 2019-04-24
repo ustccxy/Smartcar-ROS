@@ -434,20 +434,20 @@ void NDTLocalization::odomCB(const nav_msgs::Odometry::ConstPtr& msg)
 
     tf_broadcaster_.sendTransform(tf::StampedTransform(current_map2odom_, msg->header.stamp, param_map_frame_, param_odom_frame_));
 
-    // if (param_debug_ && rawodom_init_) {
-    //     msg_rawodom_.header.stamp = msg->header.stamp;
-    //     tf::Quaternion tmp_q;
-    //     tf::quaternionMsgToTF(msg_rawodom_.pose.pose.orientation, tmp_q);
-    //     double roll, pitch, yaw;
-    //     tf::Matrix3x3(tf::Quaternion(tmp_q)).getEulerYPR(yaw, pitch, roll);
-    //     msg_rawodom_.pose.pose.position.x += std::cos(-pitch) * std::cos(yaw) * diff_x;
-    //     msg_rawodom_.pose.pose.position.y += std::cos(-pitch) * std::sin(yaw) * diff_x;
-    //     msg_rawodom_.pose.pose.position.z += std::sin(-pitch) * diff_x;
-    //     yaw += msg->twist.twist.angular.z * diff_time;
-    //     tmp_q.setRPY(roll, pitch, yaw);
-    //     tf::quaternionTFToMsg(tmp_q, msg_rawodom_.pose.pose.orientation);
-    //     pub_rawodom_.publish(msg_rawodom_);
-    // }
+    if (param_debug_ && rawodom_init_) {
+        msg_rawodom_.header.stamp = msg->header.stamp;
+        tf::Quaternion tmp_q;
+        tf::quaternionMsgToTF(msg_rawodom_.pose.pose.orientation, tmp_q);
+        double roll, pitch, yaw;
+        tf::Matrix3x3(tf::Quaternion(tmp_q)).getEulerYPR(yaw, pitch, roll);
+        msg_rawodom_.pose.pose.position.x += std::cos(-pitch) * std::cos(yaw) * diff_x;
+        msg_rawodom_.pose.pose.position.y += std::cos(-pitch) * std::sin(yaw) * diff_x;
+        msg_rawodom_.pose.pose.position.z += std::sin(-pitch) * diff_x;
+        yaw += msg->twist.twist.angular.z * diff_time;
+        tmp_q.setRPY(roll, pitch, yaw);
+        tf::quaternionTFToMsg(tmp_q, msg_rawodom_.pose.pose.orientation);
+        pub_rawodom_.publish(msg_rawodom_);
+    }
 }
 
 /** 
