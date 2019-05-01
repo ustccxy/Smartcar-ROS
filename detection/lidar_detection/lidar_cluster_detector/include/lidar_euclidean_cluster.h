@@ -4,7 +4,7 @@
  * @Github: https://github.com/sunmiaozju
  * @LastEditors: sunm
  * @Date: 2019-03-01 11:26:40
- * @LastEditTime: 2019-04-04 11:04:34
+ * @LastEditTime: 2019-04-29 19:36:34
  */
 #ifndef LIDAR_EUCLIDEAN_CLUSTER_H
 #define LIDAR_EUCLIDEAN_CLUSTER_H
@@ -86,6 +86,7 @@ private:
     double local_threshold_slope;
     double general_threshold_slope;
     double left_right_dis_threshold;
+    double cluster_merge_threshold;
 
     double cluster_min_points;
     double cluster_max_points;
@@ -138,7 +139,7 @@ private:
     void clusterGpu();
 
     void segmentByDistance(const pcl::PointCloud<pcl::PointXYZ>::Ptr in_cloud_ptr,
-        pcl::PointCloud<pcl::PointXYZ>::Ptr);
+        pcl::PointCloud<pcl::PointXYZ>::Ptr out_cloud_ptr);
 
     void getPointCloud_cb(
         const sensor_msgs::PointCloud2ConstPtr& msg_rawPointCloud);
@@ -148,8 +149,6 @@ private:
     void pubPointCloud(
         const ros::Publisher& publisher,
         const pcl::PointCloud<pcl::PointXYZ>::Ptr& in_pointcloud);
-
-    void splitString(const std::string& in_string, std::vector<double>& out_array);
 
     void pubClusters(const std::vector<ClusterPtr>& in_clusters,
         const ros::Publisher& pub);
