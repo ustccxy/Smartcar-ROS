@@ -4,7 +4,7 @@
  * @Github: https://github.com/sunmiaozju
  * @LastEditors: sunm
  * @Date: 2019-02-21 21:41:21
- * @LastEditTime: 2019-04-04 09:56:07
+ * @LastEditTime: 2019-05-01 13:21:44
  */
 #ifndef NODE_JOINT_PIXEL_POINTCLOUD_H
 #define NODE_JOINT_PIXEL_POINTCLOUD_H
@@ -129,6 +129,14 @@ class PixelCloudFusion {
 
     image_transport::ImageTransport image_trans;
     image_transport::Publisher pub_identified_image;
+
+    cv::Mat CameraExtrinsicMat;
+    cv::Mat CameraMat;
+    cv::Mat DistCoeff;
+    cv::Size ImageSize;
+    std::string DistModel;
+
+    bool instrinsics_paresed;
 
     void ImageCallback(const sensor_msgs::Image::ConstPtr& image_msg);
 

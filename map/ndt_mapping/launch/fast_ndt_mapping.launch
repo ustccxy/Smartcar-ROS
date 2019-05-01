@@ -9,5 +9,6 @@
 
     <node pkg="ndt_mapping" type="fast_ndt_mapping_node" name="fast_ndt_mapping_node" output="screen">
         <rosparam file="$(find ndt_mapping)/params/params_ndt_mapping.yaml" command="load"/>
+        <param name="whole_map_folder" type="string" value="confirm it" />
     </node>
 </launch>

@@ -19,7 +19,8 @@ ndt_method_type: 2  # 0:pcl 1:cpu 2:gpu 3:omp 4:gpu_ptr
 is_publish_map_full: true
 is_publish_map_filterd_ground: false
 is_publish_map_for_costmap: true
-is_publish_map_for_vectormap: false
+
+is_publish_whole_map: false
 #>>>>>>>>>common params
 base_frame: "base_link"
 odom_topic: "/odom_raw"

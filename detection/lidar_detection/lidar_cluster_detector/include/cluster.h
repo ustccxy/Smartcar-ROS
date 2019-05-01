@@ -4,7 +4,7 @@
  * @Github: https://github.com/sunmiaozju
  * @LastEditors: sunm
  * @Date: 2019-03-05 20:42:26
- * @LastEditTime: 2019-03-06 09:05:19
+ * @LastEditTime: 2019-04-29 19:34:38
  */
 #ifndef CLUSTER_H
 #define CLUSTER_H
@@ -12,14 +12,13 @@
 #include <chrono>
 #include <cmath>
 #include <iostream>
+#include <opencv2/core/core.hpp>
+#include <opencv2/opencv.hpp>
+#include <pcl/common/common.h>
 #include <ros/ros.h>
 
-#include "opencv2/core/core.hpp"
-#include <opencv2/opencv.hpp>
-
-#include <pcl/common/common.h>
-
 namespace LidarDetector {
+
 class Cluster {
 private:
     pcl::PointCloud<pcl::PointXYZRGB>::Ptr pc;
@@ -35,9 +34,11 @@ private:
 public:
     Cluster();
     ~Cluster();
-    void setCloud(const pcl::PointCloud<pcl::PointXYZ>::Ptr in_cloud,
+    void SetCloud(const pcl::PointCloud<pcl::PointXYZ>::Ptr in_cloud,
         std::vector<cv::Scalar>& color_table,
         const std::vector<int>& cluster_indices, const double& cluster_id);
+    pcl::PointXYZ GetCentroid();
+    pcl::PointCloud<pcl::PointXYZRGB>::Ptr GetCloud();
 };
 
 typedef boost::shared_ptr<Cluster> ClusterPtr;
