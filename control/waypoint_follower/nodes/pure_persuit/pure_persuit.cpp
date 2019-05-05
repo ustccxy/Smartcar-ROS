@@ -4,7 +4,7 @@
  * @Github: https://github.com/sunmiaozju
  * @LastEditors: sunm
  * @Date: 2019-02-21 10:47:42
- * @LastEditTime: 2019-03-27 20:53:56
+ * @LastEditTime: 2019-05-06 00:26:02
  */
 // ROS Includes
 #include "pure_persuit.h"
@@ -23,6 +23,7 @@ PurePursuitNode::PurePursuitNode()
     , next_waypoint_number_(-1)
     , lookahead_distance_(0)
     , is_last_point(false)
+    , is_in_cross(false)
 {
     // 设置了订阅，发布的话题消息， 读取了launch文件中的配置变量
     initForROS();
@@ -38,19 +39,21 @@ void PurePursuitNode::initForROS()
     // ros parameter settings
     private_nh_.param("is_linear_interpolation", is_linear_interpolation_, bool(false));
     private_nh_.param("wheel_base", wheel_base_, double(0.5));
-    private_nh_.param("lookahead_distance_ratio", lookahead_distance_ratio_, double(4.0)); //假设速度的单位是m/s, 1M/S的预瞄距离是4m
+    private_nh_.param("lookahead_distance_ratio", lookahead_distance_ratio_, double(6.0)); //假设速度的单位是m/s, 1M/S的预瞄距离是4m
     private_nh_.param("minimum_lookahead_distance_", minimum_lookahead_distance_, double(2.5));
     private_nh_.param("const_lookahead_distance_", const_lookahead_distance_, double(4));
     private_nh_.param("const_velocity_", const_velocity_, double(1)); //1m/s
     private_nh_.param("is_const_lookahead_dis", is_const_lookahead_dis_, true);
     private_nh_.param("is_const_speed_command_", is_const_speed_command_, true);
     private_nh_.param("is_yunleCar", is_yunleCar, true);
+    private_nh_.param("cross_lookahead_dis", cross_lookahead_dis, double(3));
+    private_nh_.param("lane_lookahead_dis", lane_lookahead_dis, double(9));
 
     // setup subscriber
     // sub_lane = nh_.subscribe("best_local_trajectories", 10, &PurePursuitNode::callbackFromWayPoints, this);
     sub_lane = nh_.subscribe("global_path", 10, &PurePursuitNode::callbackFromWayPoints, this);
     sub_currentpose = nh_.subscribe("/ndt/current_pose", 10, &PurePursuitNode::callbackFromCurrentPose, this);
-    sub_speed = nh_.subscribe("ndt_speed", 10, &PurePursuitNode::callbackFromCurrentVelocity, this);
+    sub_speed = nh_.subscribe("vehicle_status", 10, &PurePursuitNode::callbackFromCurrentVelocity, this);
 
     // setup publisher
     pub_ctl = nh_.advertise<geometry_msgs::Twist>("ctrl_cmd", 10);
@@ -123,6 +126,10 @@ void PurePursuitNode::getNextWaypoint()
     static int clearest_points_index = -1;
     bool is_find_clearest_point = false;
     static float search_radius = 2;
+    bool cross_in = false;
+    bool cross_out = false;
+    int lock_index;
+    int save_index;
 
     // if waypoints are not given, do nothing.
     if (path_size == 0) {
@@ -138,6 +145,7 @@ void PurePursuitNode::getNextWaypoint()
             // 如果找完所有的点都没有大于前视距离的点了，那么就选取最后一个点
             double dis = getPlaneDistance(current_waypoints_.at(i).pose.pose.position, current_pose_.position);
 
+            // 寻找车辆当前的最临近点
             if (dis < search_radius) {
                 clearest_points_index = i;
                 is_find_clearest_point = true;
@@ -150,8 +158,40 @@ void PurePursuitNode::getNextWaypoint()
 
             if ((dis > lookahead_distance_) && (pre_index <= i) && (clearest_points_index <= i)) {
                 next_waypoint_number_ = i;
+                if (!cross_in) { // 如果标志为“刚开始进入弯道”为正，保持预瞄点不变
+                    next_waypoint_number_ = lock_index;
+                }
+
+                // 判断为刚开始进入弯道
+                if (cross_in == false && current_waypoints_[pre_index].is_lane == 1 && current_waypoints_[next_waypoint_number_].is_lane == 0) {
+                    cross_in = true;
+                    lock_index = next_waypoint_number_;
+                } else if (cross_in && getPlaneDistance(current_waypoints_.at(lock_index).pose.pose.position, current_waypoints_.at(clearest_points_index).pose.pose.position) < cross_lookahead_dis) {
+                    cross_in = false; //判断车辆已经结束刚刚进入弯道的状态，正式进入弯道，速度下降，预瞄距离下降
+                    is_in_cross = true;
+                }
+
+                // 记下车辆出弯道的点的index
+                if (cross_out == false && current_waypoints_[pre_index].is_lane == 0 && current_waypoints_[next_waypoint_number_].is_lane == 1) {
+                    cross_out = true;
+                    save_index = next_waypoint_number_;
+                } else if (cross_out == true && abs(save_index - clearest_points_index) <= 2) // 判断车辆已经完全离开弯道
+                {
+                    cross_out = false;
+                    is_in_cross = false;
+                }
+
                 search_start_index = (i - 15 > 0) ? (i - 15) : 0;
                 pre_index = i;
+
+                // 判断是否进入弯道
+                if (is_in_cross) {
+                    command_linear_velocity_ = 0.5; // 弯道处的速度
+                } else {
+                    command_linear_velocity_ = 1.5; // 直线的速度
+                }
+
+                // 循环出口
                 if (is_find_clearest_point) {
                     is_find_clearest_point = false;
                     return;
@@ -164,6 +204,8 @@ void PurePursuitNode::getNextWaypoint()
         search_start_index = 0;
         is_find_clearest_point = false;
         pre_index = -1;
+        bool cross_out = false;
+        bool cross_in = false;
     }
     // if this program reaches here , it means we lost the waypoint!
 
@@ -319,17 +361,18 @@ void PurePursuitNode::publishControlCommandStamped(const bool& can_get_curvature
     if (is_yunleCar) {
         can_msgs::ecu ecu_ctl;
         ecu_ctl.motor = can_get_curvature ? computeCommandVelocity() : 0;
-        
+
         double steer = atan(wheel_base_ * curvature);
-        
-        if(steer > 0){
-            steer = steer / 0.06 * 140; 
-        }else{
-            steer = steer / 0.06 * 93; 
+
+        if (steer > 0) {
+            steer = steer / 0.06 * 140;
+        } else {
+            steer = steer / 0.06 * 93;
         }
         ecu_ctl.steer = can_get_curvature ? steer : 0;
-        
+
         ecu_ctl.shift = ecu_ctl.SHIFT_D;
+
         if (is_last_point) {
             ecu_ctl.motor = 0;
             ecu_ctl.shift = ecu_ctl.SHIFT_N;
@@ -348,12 +391,18 @@ void PurePursuitNode::publishControlCommandStamped(const bool& can_get_curvature
 
 double PurePursuitNode::computeLookaheadDistance() const
 {
-    if (is_const_lookahead_dis_ == true)
-        return const_lookahead_distance_;
-    // 通过速度乘系数得到的前视距离不小于最小前视距离，不大于当前速度×10
-    double maximum_lookahead_distance = current_linear_velocity_ * 10;
+    if (is_const_lookahead_dis_ == true) {
+        if (is_in_cross) {
+            return cross_lookahead_dis;
+        } else {
+            return lane_lookahead_dis;
+        }
+    }
+
+    // 通过速度乘系数得到的前视距离不小于最小前视距离，不大于当前速度×7
+    double maximum_lookahead_distance = current_linear_velocity_ * 7;
     double ld = current_linear_velocity_ * lookahead_distance_ratio_;
-    return ld < minimum_lookahead_distance_ ? minimum_lookahead_distance_ : ld > maximum_lookahead_distance ? maximum_lookahead_distance : ld;
+    return ld < (minimum_lookahead_distance_) ? minimum_lookahead_distance_ : (ld > maximum_lookahead_distance) ? maximum_lookahead_distance : ld;
 }
 
 double PurePursuitNode::computeCommandVelocity() const
@@ -371,15 +420,15 @@ void PurePursuitNode::callbackFromCurrentPose(const geometry_msgs::PoseStampedCo
     is_pose_set_ = true;
 }
 
-void PurePursuitNode::callbackFromCurrentVelocity(const geometry_msgs::TwistStampedConstPtr& msg)
+void PurePursuitNode::callbackFromCurrentVelocity(const can_msgs::vehicle_status& msg)
 {
-    current_linear_velocity_ = msg->twist.linear.x;
+    current_linear_velocity_ = msg.cur_speed;
 }
 
 void PurePursuitNode::callbackFromWayPoints(const smartcar_msgs::LaneConstPtr& msg)
 {
     // 从way_ponits里面读取目标速度
-    command_linear_velocity_ = 2; //  1m/s
+    // command_linear_velocity_ = 2; //  1m/s
 
     current_waypoints_ = msg->waypoints;
 
