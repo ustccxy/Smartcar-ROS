@@ -9,7 +9,6 @@
     <arg name="test_cloud_topic" default="/test_cloud"/>
     <arg name="calibration_file" default="$(find calibration_camera_lidar)/docs/yunlecar_calibration_camera_lidar.yaml"/>
 
-
     <node pkg="joint_pixel_pointcloud" type="joint_pixel_pointcloud" name="pixel_cloud_fusion" output="screen">
         <param name="pointcloud_input" value="$(arg pointcloud_input)" />
         <param name="image_input" value="$(arg image_input)" />
