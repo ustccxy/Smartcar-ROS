@@ -5,6 +5,8 @@
     <include file="$(find calibration_publisher)/launch/yunlecar_calibration_publisher.launch" />
     
     <!--<include file="$(find cv_camera)/launch/cv_camera_driver.launch" />-->
+
+    <include file="$(find ray_ground_filter)/launch/Yunlecar_ray_ground_filter.launch" />
     
     <include file="$(find  joint_pixel_pointcloud)/launch/joint_pixel_pointcloud.launch" />
 

@@ -159,7 +159,7 @@ void PixelCloudFusion::CloudCallback(const sensor_msgs::PointCloud2::ConstPtr& c
     pcl::toROSMsg(*in_cloud, test_point);
     test_point.header = cloud_msg->header;
     test_pointcloud.publish(test_point);
-
+    
     sensor_msgs::PointCloud2 out_cloud_msg;
     pcl::toROSMsg(*out_cloud, out_cloud_msg);
     out_cloud_msg.header = cloud_msg->header;
@@ -404,6 +404,9 @@ void PixelCloudFusion::publishObjs()
     obj_marker.color.a = 0.6;
     obj_marker.lifetime = ros::Duration(0.1);
     objs_marker.markers.clear();
+
+    //std::cout << "removed_lessPoints_objs.size :" << removed_lessPoints_objs.size() << std::endl;
+
     for (size_t k = 0; k < removed_lessPoints_objs.size(); k++) {
 
         // Rviz marker
@@ -535,7 +538,7 @@ pcl::PointXYZ PixelCloudFusion::TransformPoint(const pcl::PointXYZ& in_point, co
 void PixelCloudFusion::initROS()
 {
     std::string pointscloud_input, image_input, camera_info_input, fusison_output_topic, test_cloud_topic;
-    nh_private.param<std::string>("pointcloud_input", pointscloud_input, "/velodyne_points");
+    nh_private.param<std::string>("pointcloud_input", pointscloud_input, "/ray_filter/velodyne_points_filtered");
     nh_private.param<std::string>("image_input", image_input, "/cv_camera/image_raw");
     nh_private.param<std::string>("camera_info_input", camera_info_input, "/camera_info");
     nh_private.param<std::string>("fusion_output_topic", fusison_output_topic, "/points_output");

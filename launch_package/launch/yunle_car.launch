@@ -9,13 +9,16 @@
     <include file="$(find odom_imu)/launch/odom_imu.launch" />
 
     <include file="$(find calibration_publisher)/launch/yunlecar_calibration_publisher.launch" />
-
+	
+    <include file="$(find joint_pixel_pointcloud)/launch/joint_pixel_pointcloud.launch" />
 
     <!-- <include file="$(find hall_encoder)/launch/hall_encoder_node.launch" />-->
 
     <!-- <include file="$(find razor_imu_9dof)/launch/razor-pub.launch" />-->
 
     <!-- <include file="$(find odom_imu)/launch/odom_imu.launch" /> -->
+
+
 
     <node pkg="map_server" type="map_server" name="map_server_node" args="$(find static_map)/map_file/map.yaml"/>
 
