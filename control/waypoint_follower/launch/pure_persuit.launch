@@ -9,6 +9,9 @@
     <arg name="is_const_lookahead_dis" default="true"/>
     <arg name="is_const_speed_command_" default="false"/>
     <arg name="is_yunleCar" default="true"/>
+    <arg name="cross_lookahead_dis" default="2"/>
+    <arg name="lane_lookahead_dis" default="9"/>
+
 
     <!-- rosrun waypoint_follower pure_pursuit -->
     <node pkg="waypoint_follower" type="pure_persuit_node" name="pure_pursuit" output="screen" >
@@ -21,5 +24,8 @@
         <param name="is_const_lookahead_dis" value="$(arg is_const_lookahead_dis)"/>
         <param name="is_const_speed_command_" value="$(arg is_const_speed_command_)"/>
         <param name="is_yunleCar" value="$(arg is_yunleCar)"/>
+        <param name="cross_lookahead_dis" value="$(arg cross_lookahead_dis)"/>
+        <param name="lane_lookahead_dis" value="$(arg lane_lookahead_dis)"/>
+
     </node>
 </launch>

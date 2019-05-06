@@ -4,7 +4,7 @@
  * @Github: https://github.com/sunmiaozju
  * @LastEditors: sunm
  * @Date: 2019-02-21 10:47:42
- * @LastEditTime: 2019-05-06 00:26:02
+ * @LastEditTime: 2019-05-06 09:56:46
  */
 // ROS Includes
 #include "pure_persuit.h"
@@ -372,12 +372,15 @@ void PurePursuitNode::publishControlCommandStamped(const bool& can_get_curvature
         ecu_ctl.steer = can_get_curvature ? steer : 0;
 
         ecu_ctl.shift = ecu_ctl.SHIFT_D;
+        ecu_ctl.brake = false;
 
         if (is_last_point) {
             ecu_ctl.motor = 0;
             ecu_ctl.shift = ecu_ctl.SHIFT_N;
+            ecu_ctl.brake = true;
         }
         pub_yunle_control.publish(ecu_ctl);
+
     } else {
         geometry_msgs::Twist control_msg;
         control_msg.linear.x = can_get_curvature ? computeCommandVelocity() : 0;
@@ -429,6 +432,8 @@ void PurePursuitNode::callbackFromWayPoints(const smartcar_msgs::LaneConstPtr& m
 {
     // 从way_ponits里面读取目标速度
     // command_linear_velocity_ = 2; //  1m/s
+
+    is_last_point = false;
 
     current_waypoints_ = msg->waypoints;
 
