@@ -4,7 +4,7 @@
  * @Github: https://github.com/sunmiaozju
  * @LastEditors: sunm
  * @Date: 2019-03-01 11:26:40
- * @LastEditTime: 2019-04-04 11:04:34
+ * @LastEditTime: 2019-05-01 22:51:13
  */
 #ifndef LIDAR_EUCLIDEAN_CLUSTER_H
 #define LIDAR_EUCLIDEAN_CLUSTER_H
@@ -29,6 +29,8 @@
 #include <pcl_ros/point_cloud.h>
 
 #include <sensor_msgs/PointCloud2.h>
+#include <smartcar_msgs/DetectedObject.h>
+#include <smartcar_msgs/DetectedObjectArray.h>
 #include <visualization_msgs/Marker.h>
 #include <visualization_msgs/MarkerArray.h>
 
@@ -65,6 +67,7 @@ private:
     ros::Publisher pub_testPointCloud;
     ros::Publisher pub2_testPointCloud;
     ros::Publisher pub_clusters;
+    ros::Publisher pub_clusters_Rviz;
 
     std::chrono::system_clock::time_point start_time, end_time;
     std_msgs::Header msg_header;
@@ -86,6 +89,7 @@ private:
     double local_threshold_slope;
     double general_threshold_slope;
     double left_right_dis_threshold;
+    double cluster_merge_threshold;
 
     double cluster_min_points;
     double cluster_max_points;
@@ -113,14 +117,14 @@ private:
     void convertXYZ2XYZRT(const pcl::PointCloud<pcl::PointXYZ>::Ptr& in_cloud,
         std::vector<PointCloudXYZRT>& out_radial_divided_cloud);
 
-    void mergeClusters(const std::vector<ClusterPtr>& in_clusters, std::vector<ClusterPtr>& out_clusters,
+    void mergeClusters(std::vector<Cluster>& in_clusters, std::vector<Cluster>& out_clusters,
         std::vector<size_t> in_merge_indices, const size_t& current_index,
         std::vector<bool>& in_out_merged_clusters);
 
-    void checkAllForMerge(std::vector<ClusterPtr>& in_clusters, std::vector<ClusterPtr>& out_clusters,
+    void checkAllForMerge(std::vector<Cluster>& in_clusters, std::vector<Cluster>& out_clusters,
         float in_merge_threshold);
 
-    void checkClusterMerge(size_t in_cluster_id, std::vector<ClusterPtr>& in_clusters,
+    void checkClusterMerge(size_t in_cluster_id, std::vector<Cluster>& in_clusters,
         std::vector<bool>& in_out_visited_clusters, std::vector<size_t>& out_merge_indices,
         double in_merge_threshold);
 
@@ -133,12 +137,12 @@ private:
         const double& height, const double& near_dis, const double& fat_dis, const double& left_right_dis);
 
     void clusterCpu(const pcl::PointCloud<pcl::PointXYZ>::Ptr& in_cloud,
-        std::vector<ClusterPtr>& cluster, const double& max_cluster_dis);
+        std::vector<Cluster>& cluster, const double& max_cluster_dis);
 
     void clusterGpu();
 
     void segmentByDistance(const pcl::PointCloud<pcl::PointXYZ>::Ptr in_cloud_ptr,
-        pcl::PointCloud<pcl::PointXYZ>::Ptr);
+        pcl::PointCloud<pcl::PointXYZ>::Ptr out_cloud_ptr);
 
     void getPointCloud_cb(
         const sensor_msgs::PointCloud2ConstPtr& msg_rawPointCloud);
@@ -149,10 +153,8 @@ private:
         const ros::Publisher& publisher,
         const pcl::PointCloud<pcl::PointXYZ>::Ptr& in_pointcloud);
 
-    void splitString(const std::string& in_string, std::vector<double>& out_array);
-
-    void pubClusters(const std::vector<ClusterPtr>& in_clusters,
-        const ros::Publisher& pub);
+    void pubClustersRviz(std::vector<Cluster>& in_clusters,
+        ros::Publisher& pub);
 };
 
 } // namespace LidarDetector

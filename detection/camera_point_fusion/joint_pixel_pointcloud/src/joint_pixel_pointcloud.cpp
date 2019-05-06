@@ -4,7 +4,7 @@
  * @Github: https://github.com/sunmiaozju
  * @LastEditors: sunm
  * @Date: 2019-02-21 21:34:40
- * @LastEditTime: 2019-04-04 09:58:38
+ * @LastEditTime: 2019-05-01 21:37:59
  */
 #include "joint_pixel_pointcloud.h"
 
@@ -35,6 +35,7 @@ void PixelCloudFusion::ImageCallback(const sensor_msgs::Image::ConstPtr& image_m
 
 void PixelCloudFusion::IntrinsicsCallback(const sensor_msgs::CameraInfo& intrinsisc_msg)
 {
+
     image_size.height = intrinsisc_msg.height;
     image_size.width = intrinsisc_msg.width;
 
@@ -70,11 +71,12 @@ void PixelCloudFusion::CloudCallback(const sensor_msgs::PointCloud2::ConstPtr& c
     //    return;
     //}
 
+    // 获取相机和激光雷达的转换关系
     if (!camera_lidar_tf_ok_) {
         // 从tf树里面寻找变换关系
         camera_lidar_tf = FindTransform(image_frame_id, cloud_msg->header.frame_id);
     }
-
+    // 获取相机内参
     if (!camera_info_ok_ || !camera_lidar_tf_ok_) {
         ROS_INFO("joint_pixel_pointcloud : waiting for camera intrinsics and camera lidar tf");
         return;
@@ -119,11 +121,11 @@ void PixelCloudFusion::CloudCallback(const sensor_msgs::PointCloud2::ConstPtr& c
             //colored_3d_point.g = rgb_pixel[1] * 2;
             //colored_3d_point.b = rgb_pixel[0] * 2;
             //out_cloud->points.push_back(colored_3d_point);
-            
+
             colored_3d_point.r = 255;
             colored_3d_point.g = 0;
             colored_3d_point.b = 0;
-            
+
             out_cloud->points.push_back(colored_3d_point);
         }
 
@@ -157,7 +159,7 @@ void PixelCloudFusion::CloudCallback(const sensor_msgs::PointCloud2::ConstPtr& c
     pcl::toROSMsg(*in_cloud, test_point);
     test_point.header = cloud_msg->header;
     test_pointcloud.publish(test_point);
-
+    
     sensor_msgs::PointCloud2 out_cloud_msg;
     pcl::toROSMsg(*out_cloud, out_cloud_msg);
     out_cloud_msg.header = cloud_msg->header;
@@ -402,6 +404,9 @@ void PixelCloudFusion::publishObjs()
     obj_marker.color.a = 0.6;
     obj_marker.lifetime = ros::Duration(0.1);
     objs_marker.markers.clear();
+
+    //std::cout << "removed_lessPoints_objs.size :" << removed_lessPoints_objs.size() << std::endl;
+
     for (size_t k = 0; k < removed_lessPoints_objs.size(); k++) {
 
         // Rviz marker
@@ -533,7 +538,7 @@ pcl::PointXYZ PixelCloudFusion::TransformPoint(const pcl::PointXYZ& in_point, co
 void PixelCloudFusion::initROS()
 {
     std::string pointscloud_input, image_input, camera_info_input, fusison_output_topic, test_cloud_topic;
-    nh_private.param<std::string>("pointcloud_input", pointscloud_input, "/velodyne_points");
+    nh_private.param<std::string>("pointcloud_input", pointscloud_input, "/ray_filter/velodyne_points_filtered");
     nh_private.param<std::string>("image_input", image_input, "/cv_camera/image_raw");
     nh_private.param<std::string>("camera_info_input", camera_info_input, "/camera_info");
     nh_private.param<std::string>("fusion_output_topic", fusison_output_topic, "/points_output");
@@ -562,6 +567,26 @@ void PixelCloudFusion::initROS()
     objs_pub_rviz = nh.advertise<visualization_msgs::MarkerArray>("fusion_objs_rviz", 1);
     objs_pub = nh.advertise<smartcar_msgs::DetectedObjectArray>("fusion_objs", 1);
     pub_identified_image = image_trans.advertise("identified_image", 1);
+
+    std::string calibration_file;
+    nh_private.param<std::string>("calibration_file", calibration_file, "");
+
+    if (calibration_file.empty()) {
+        ROS_ERROR("[joint_pixel_pointcloud]: missing calibration file path '%S'. ", calibration_file.c_str());
+        ros::shutdown();
+    }
+
+    cv::FileStorage fs(calibration_file, cv::FileStorage::READ);
+    if (!fs.isOpened()) {
+        ROS_ERROR("[joint_pixel_pointcloud]: connot open file calibration file %s", calibration_file.c_str());
+        ros::shutdown();
+    }
+
+    fs["CameraExtrinsicMat"] >> CameraExtrinsicMat;
+    fs["CameraMat"] >> CameraMat;
+    fs["DistCoeff"] >> DistCoeff;
+    fs["ImageSize"] >> ImageSize;
+    fs["DistModel"] >> DistModel;
 }
 
 PixelCloudFusion::PixelCloudFusion()

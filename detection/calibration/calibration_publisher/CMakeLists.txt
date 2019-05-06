@@ -15,6 +15,7 @@ find_package(catkin REQUIRED COMPONENTS
     rosconsole
     std_msgs
     smartcar_msgs
+    yunle_sensor_msgs
 )
 
 find_package(Qt5Core REQUIRED)
@@ -33,6 +34,7 @@ catkin_package(CATKIN_DEPENDS
     std_msgs
     rosconsole
     smartcar_msgs
+    yunle_sensor_msgs
 )
 
 set(CMAKE_CXX_FLAGS "-O3 -g -Wall ${CMAKE_CXX_FLAGS}")

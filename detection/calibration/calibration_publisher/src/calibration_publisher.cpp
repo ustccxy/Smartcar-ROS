@@ -1,11 +1,16 @@
+#include "smartcar_msgs/ProjectionMatrix.h"
+#include "yunle_sensor_msgs/DetectLane.h"
+#include "yunle_sensor_msgs/DetectLanes.h"
+#include "yunle_sensor_msgs/DetectObject.h"
+#include "yunle_sensor_msgs/DetectObjs.h"
+#include "yunle_sensor_msgs/LanePoint.h"
+#include <opencv2/core/core.hpp>
+#include <opencv2/highgui/highgui.hpp>
 #include <ros/ros.h>
 #include <sensor_msgs/CameraInfo.h>
 #include <sensor_msgs/Image.h>
 #include <tf/transform_broadcaster.h>
 #include <tf/transform_datatypes.h>
-#include <opencv2/core/core.hpp>
-#include <opencv2/highgui/highgui.hpp>
-#include "smartcar_msgs/ProjectionMatrix.h"
 
 #define _NODE_NAME_ "calibration_publisher"
 
@@ -32,7 +37,7 @@ static bool extrinsics_parsed;
 static sensor_msgs::CameraInfo camera_info_msg;
 static smartcar_msgs::ProjectionMatrix extrinsic_matrix_msg;
 
-void tfRegistration(const cv::Mat &camExMat, const ros::Time &timeStamp)
+void tfRegistration(const cv::Mat& camExMat, const ros::Time& timeStamp)
 {
     tf::Matrix3x3 rotation_mat;
     double roll = 0, pitch = 0, yaw = 0;
@@ -41,31 +46,28 @@ void tfRegistration(const cv::Mat &camExMat, const ros::Time &timeStamp)
     static tf::TransformBroadcaster broadcaster;
 
     rotation_mat.setValue(camExMat.at<double>(0, 0), camExMat.at<double>(0, 1), camExMat.at<double>(0, 2),
-                          camExMat.at<double>(1, 0), camExMat.at<double>(1, 1), camExMat.at<double>(1, 2),
-                          camExMat.at<double>(2, 0), camExMat.at<double>(2, 1), camExMat.at<double>(2, 2));
+        camExMat.at<double>(1, 0), camExMat.at<double>(1, 1), camExMat.at<double>(1, 2),
+        camExMat.at<double>(2, 0), camExMat.at<double>(2, 1), camExMat.at<double>(2, 2));
 
     rotation_mat.getRPY(roll, pitch, yaw, 1);
 
     quaternion.setRPY(roll, pitch, yaw);
 
     transform.setOrigin(tf::Vector3(camExMat.at<double>(0, 3),
-                                    camExMat.at<double>(1, 3),
-                                    camExMat.at<double>(2, 3)));
+        camExMat.at<double>(1, 3),
+        camExMat.at<double>(2, 3)));
 
     transform.setRotation(quaternion);
 
     broadcaster.sendTransform(tf::StampedTransform(transform, timeStamp, target_frame, camera_frame));
 }
 
-void projectionMatrix_sender(const cv::Mat &projMat, const ros::Time &timeStamp)
+void projectionMatrix_sender(const cv::Mat& projMat, const ros::Time& timeStamp)
 {
 
-    if (!extrinsics_parsed)
-    {
-        for (int row = 0; row < 4; row++)
-        {
-            for (int col = 0; col < 4; col++)
-            {
+    if (!extrinsics_parsed) {
+        for (int row = 0; row < 4; row++) {
+            for (int col = 0; col < 4; col++) {
                 extrinsic_matrix_msg.projection_matrix[row * 4 + col] = projMat.at<double>(row, col);
             }
         }
@@ -76,43 +78,33 @@ void projectionMatrix_sender(const cv::Mat &projMat, const ros::Time &timeStamp)
     pub_projection_matrix.publish(extrinsic_matrix_msg);
 }
 
-void cameraInfo_sender(const cv::Mat &camMat,
-                       const cv::Mat &DistCoeff,
-                       const cv::Size &imgSize,
-                       const std::string &distModel,
-                       const ros::Time &timeStamp)
+void cameraInfo_sender(const cv::Mat& camMat,
+    const cv::Mat& DistCoeff,
+    const cv::Size& imgSize,
+    const std::string& distModel,
+    const ros::Time& timeStamp)
 {
 
-    if (!instrinsics_paresed)
-    {
-        for (int row = 0; row < 3; row++)
-        {
-            for (int col = 0; col < 3; col++)
-            {
+    if (!instrinsics_paresed) {
+        for (int row = 0; row < 3; row++) {
+            for (int col = 0; col < 3; col++) {
                 camera_info_msg.K[row * 3 + col] = camMat.at<double>(row, col);
             }
         }
 
-        for (int row = 0; row < 3; row++)
-        {
-            for (int col = 0; col < 4; col++)
-            {
+        for (int row = 0; row < 3; row++) {
+            for (int col = 0; col < 4; col++) {
 
-                if (col == 3)
-                {
+                if (col == 3) {
                     camera_info_msg.P[row * 4 + col] = 0.0f;
-                }
-                else
-                {
+                } else {
                     camera_info_msg.P[row * 4 + col] = camMat.at<double>(row, col);
                 }
             }
         }
 
-        for (int row = 0; row < DistCoeff.rows; row++)
-        {
-            for (int col = 0; col < DistCoeff.cols; col++)
-            {
+        for (int row = 0; row < DistCoeff.rows; row++) {
+            for (int col = 0; col < DistCoeff.cols; col++) {
                 camera_info_msg.D.push_back(DistCoeff.at<double>(row, col));
             }
         }
@@ -129,29 +121,45 @@ void cameraInfo_sender(const cv::Mat &camMat,
     pub_camera_info.publish(camera_info_msg);
 }
 
-static void image_raw_callback(const sensor_msgs::Image &image_msg)
+static void image_raw_callback(const sensor_msgs::Image& image_msg)
 {
     ros::Time timeStampOfImage;
     timeStampOfImage.sec = image_msg.header.stamp.sec;
     timeStampOfImage.nsec = image_msg.header.stamp.nsec;
 
-    if (isRegister_tf)
-    {
+    if (isRegister_tf) {
         tfRegistration(CameraExtrinsicMat, timeStampOfImage);
     }
 
-    if (isPublish_cameraInfo)
-    {
+    if (isPublish_cameraInfo) {
         cameraInfo_sender(CameraMat, DistCoeff, ImageSize, DistModel, timeStampOfImage);
     }
 
-    if (isPublish_extrinsic)
-    {
+    if (isPublish_extrinsic) {
         projectionMatrix_sender(CameraExtrinsicMat, timeStampOfImage);
     }
 }
 
-int main(int argc, char *argv[])
+static void detectobjs_callback(const yunle_sensor_msgs::DetectObjs& detectobjs_msg)
+{
+    // ros::Time timeStampOfObjs;
+    // timeStampOfObjs.sec = detectobjs_msg.header.stamp.sec;
+    // timeStampOfObjs.nsec = detectobjs_msg.header.stamp.nsec;
+
+    if (isRegister_tf) {
+        tfRegistration(CameraExtrinsicMat, ros::Time::now());
+    }
+
+    if (isPublish_cameraInfo) {
+        cameraInfo_sender(CameraMat, DistCoeff, ImageSize, DistModel, ros::Time::now());
+    }
+
+    if (isPublish_extrinsic) {
+        projectionMatrix_sender(CameraExtrinsicMat, ros::Time::now());
+    }
+}
+
+int main(int argc, char* argv[])
 {
     ros::init(argc, argv, "calibration_publisher");
     ros::NodeHandle nh;
@@ -175,16 +183,14 @@ int main(int argc, char *argv[])
     std::string calibration_file;
     nh_private.param<std::string>("calibration_file", calibration_file, "");
 
-    if (calibration_file.empty())
-    {
+    if (calibration_file.empty()) {
         ROS_ERROR("[%s] missing calibration file path '%S'. ", _NODE_NAME_, calibration_file.c_str());
         ros::shutdown();
         return -1;
     }
 
     cv::FileStorage fs(calibration_file, cv::FileStorage::READ);
-    if (!fs.isOpened())
-    {
+    if (!fs.isOpened()) {
         ROS_ERROR("[%s] connot open file calibration file %s", _NODE_NAME_, calibration_file.c_str());
         ros::shutdown();
         return -1;
@@ -200,8 +206,10 @@ int main(int argc, char *argv[])
     extrinsics_parsed = false;
 
     ros::Subscriber sub_image;
+    ros::Subscriber sub_objs;
 
     sub_image = nh.subscribe(image_topic, 10, &image_raw_callback);
+    sub_objs = nh.subscribe("detectObjs", 10, &detectobjs_callback);
 
     pub_camera_info = nh.advertise<sensor_msgs::CameraInfo>(camera_info_topic, 10, true);
 

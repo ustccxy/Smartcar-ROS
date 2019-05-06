@@ -9,13 +9,16 @@
     <include file="$(find odom_imu)/launch/odom_imu.launch" />
 
     <include file="$(find calibration_publisher)/launch/yunlecar_calibration_publisher.launch" />
-
+	
+    <include file="$(find joint_pixel_pointcloud)/launch/joint_pixel_pointcloud.launch" />
 
     <!-- <include file="$(find hall_encoder)/launch/hall_encoder_node.launch" />-->
 
     <!-- <include file="$(find razor_imu_9dof)/launch/razor-pub.launch" />-->
 
     <!-- <include file="$(find odom_imu)/launch/odom_imu.launch" /> -->
+
+
 
     <node pkg="map_server" type="map_server" name="map_server_node" args="$(find static_map)/map_file/map.yaml"/>
 
@@ -41,5 +44,19 @@
         <param name="Visualize_Simulation" value="false" />
     </node> -->
 
+    <node pkg="global_planning" type="global_plan_node" name="Global_planner_with_defined_paths" output="screen">
+        <param name="file_path" value="$(find global_planning)/path_file_Yunlecar/" />
+        <param name="debug" value="true" />
+        <param name="weight_data" value="0.47" />
+        <param name="weight_smooth" value="0.14" />
+        <param name="tolerance" value="0.17" />
+
+        <param name="lane_speed_limit" value="3.0"/>
+        <param name="cross_speed_limit" value="1.0"/>
+        <param name="start_length" value="5.0"/>
+        <param name="end_length" value="5.0"/>
+
+        <param name="Visualize_Simulation" value="false" />
+    </node>
 
 </launch>

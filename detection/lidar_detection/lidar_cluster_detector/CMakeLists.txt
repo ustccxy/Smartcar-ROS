@@ -39,7 +39,10 @@ link_directories(${OpenCV_LIBRARY_DIRS})
 add_executable(lidar_euclidean_cluster_node 
                src/lidar_euclidean_cluster_node.cpp
                src/lidar_euclidean_cluster.cpp
-               src/cluster.cpp)
+               src/cluster.cpp
+               src/publisher.cpp
+               src/utils.cpp
+               src/preprocess.cpp)
 
 target_link_libraries(lidar_euclidean_cluster_node
                       ${OpenCV_LIBRARIES}
