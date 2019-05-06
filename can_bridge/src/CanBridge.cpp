@@ -4,11 +4,11 @@
  * @Github: https://github.com/sunmiaozju
  * @LastEditors: sunm
  * @Date: 2019-03-25 15:20:45
- * @LastEditTime: 2019-04-02 16:36:06
+ * @LastEditTime: 2019-05-06 09:55:34
  */
 
 #include <CanBridge.h>
-   
+
 namespace CanBridge {
 Can_app::Can_app()
     : nh_private("~")
@@ -54,7 +54,6 @@ void Can_app::ecu_cb(const can_msgs::ecu& in_msg)
     static double pre_steer = 0;
     SendMsg sMsg;
     sMsg.setDriveMode(DriveMode::AUTO_MODE); // 驾驶模式
-    //printf("----------------\n");
     sMsg.setSpeed(in_msg.motor); // 速度
     unsigned int shift = in_msg.shift;
     sMsg.setShiftLevel(ShiftLevel(shift)); //档位
@@ -62,7 +61,7 @@ void Can_app::ecu_cb(const can_msgs::ecu& in_msg)
     sMsg.setWheelAngle(steer); //角度
     //printf("steer: %d\n", int(steer));
     pre_steer = in_msg.steer;
-    sMsg.setEBrake(false); //刹车
+    sMsg.setEBrake(in_msg.brake); //刹车
     if (pCanClient == NULL) {
         ROS_ERROR("can module error");
         return;

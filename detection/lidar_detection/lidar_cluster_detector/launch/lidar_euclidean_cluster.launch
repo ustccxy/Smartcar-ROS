@@ -1,5 +1,5 @@
 <launch>
-    <node pkg="lidar_detector" type="lidar_euclidean_cluster_node" name="lidar_euclidean_cluster_node" output="screen">
+    <node pkg="lidar_cluster_detector" type="lidar_euclidean_cluster_node" name="lidar_euclidean_cluster_node" output="screen">
         <param name="small_scale" value="1.0"/>
         <param name="large_scale" value="2.0"/>
         <param name="angle_threshold" value="0.1"/>
@@ -12,6 +12,5 @@
         <param name="downsampleLeafSize" value="0.2"/>
         <param name="nearDistance" value="1.0"/>
         <param name="farDistance" value="15"/>
-
     </node>
 </launch>

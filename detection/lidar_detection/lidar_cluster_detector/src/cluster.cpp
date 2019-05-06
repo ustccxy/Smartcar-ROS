@@ -4,7 +4,7 @@
  * @Github: https://github.com/sunmiaozju
  * @LastEditors: sunm
  * @Date: 2019-03-05 20:38:52
- * @LastEditTime: 2019-04-29 16:23:34
+ * @LastEditTime: 2019-05-01 22:41:59
  */
 #include "cluster.h"
 
@@ -21,10 +21,11 @@ Cluster::~Cluster() {}
 /**
  * @description: 设置cluster的相关成员变量
  */
-void Cluster::SetCloud(const pcl::PointCloud<pcl::PointXYZ>::Ptr in_cloud,
+void Cluster::SetCloud(pcl::PointCloud<pcl::PointXYZ>::Ptr in_cloud,
     std::vector<cv::Scalar>& color_table,
     const std::vector<int>& cluster_indices, const double& cluster_id)
 {
+
     float min_x = std::numeric_limits<float>::max();
     float max_x = -std::numeric_limits<float>::max();
     float min_y = std::numeric_limits<float>::max();
@@ -34,14 +35,16 @@ void Cluster::SetCloud(const pcl::PointCloud<pcl::PointXYZ>::Ptr in_cloud,
 
     for (size_t i = 0; i < cluster_indices.size(); i++) {
         pcl::PointXYZRGB p;
+
         p.x = in_cloud->points[i].x;
+
         p.y = in_cloud->points[i].y;
         p.z = in_cloud->points[i].z;
         p.r = (int)color_table[cluster_id].val[0];
         p.g = (int)color_table[cluster_id].val[1];
         p.b = (int)color_table[cluster_id].val[2];
 
-        pc->points.push_back(p);
+        pc.points.push_back(p);
 
         if (p.x < min_x)
             min_x = p.x;
@@ -80,10 +83,10 @@ void Cluster::SetCloud(const pcl::PointCloud<pcl::PointXYZ>::Ptr in_cloud,
     height = max_z - min_z;
 
     std::vector<cv::Point2f> points_2d;
-    for (size_t j = 0; j < pc->points.size(); j++) {
+    for (size_t j = 0; j < pc.points.size(); j++) {
         cv::Point2f pp;
-        pp.x = pc->points[j].x;
-        pp.y = pc->points[j].y;
+        pp.x = pc.points[j].x;
+        pp.y = pc.points[j].y;
         points_2d.push_back(pp);
     }
     std::vector<cv::Point2f> hull;
@@ -103,8 +106,23 @@ pcl::PointXYZ Cluster::GetCentroid()
     return central_point;
 }
 
-pcl::PointCloud<pcl::PointXYZRGB>::Ptr Cluster::GetCloud()
+pcl::PointCloud<pcl::PointXYZRGB> Cluster::GetCloud()
 {
     return pc;
+}
+
+float Cluster::GetLength()
+{
+    return length;
+}
+
+float Cluster::GetWidth()
+{
+    return width;
+}
+
+float Cluster::GetHeight()
+{
+    return height;
 }
 }

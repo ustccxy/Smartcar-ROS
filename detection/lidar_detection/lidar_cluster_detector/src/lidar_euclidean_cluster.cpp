@@ -4,7 +4,7 @@
  * @Github: https://github.com/sunmiaozju
  * @LastEditors: sunm
  * @Date: 2019-03-01 11:25:55
- * @LastEditTime: 2019-04-29 19:39:29
+ * @LastEditTime: 2019-05-01 23:16:28
  */
 
 #include "lidar_euclidean_cluster.h"
@@ -30,11 +30,10 @@ LidarClusterDetector::~LidarClusterDetector() {}
  */
 void LidarClusterDetector::initROS()
 {
-    sub_rawPointCloud = nh.subscribe(
-        "velodyne_points", 10, &LidarClusterDetector::getPointCloud_cb, this);
+    sub_rawPointCloud = nh.subscribe("velodyne_points", 10, &LidarClusterDetector::getPointCloud_cb, this);
     pub_testPointCloud = nh.advertise<sensor_msgs::PointCloud2>("test_pointcloud", 10);
     pub2_testPointCloud = nh.advertise<sensor_msgs::PointCloud2>("test2_pointcloud", 10);
-    pub_clusters = nh.advertise<sensor_msgs::PointCloud2>("test2_pointcloud", 10);
+    pub_clusters_Rviz = nh.advertise<visualization_msgs::MarkerArray>("lidarClusterRviz", 10);
 
     private_nh.param<double>("nearDistance", nearDistance, 2.0);
     private_nh.param<double>("farDistance", farDistance, 30);
@@ -54,11 +53,10 @@ void LidarClusterDetector::initROS()
     private_nh.param<double>("left_right_dis_threshold", left_right_dis_threshold, 6.5);
 
     private_nh.param<std::string>("str_range", str_range, "15,30,45,60");
-    private_nh.param<std::string>("str_seg_distances", str_seg_distances, "0.5,1.1,1.6,2.1,2.6");
+    private_nh.param<std::string>("str_seg_distances", str_seg_distances, "0.2,0.5,1.0,1.5,2.0");
 
     private_nh.param<double>("cluster_min_points", cluster_min_points, 10);
-    private_nh.param<double>("cluster_max_points", cluster_max_points, 100000);
-
+    private_nh.param<double>("cluster_max_points", cluster_max_points, 1000);
     private_nh.param<double>("cluster_merge_threshold", cluster_merge_threshold, 1.5);
 }
 
@@ -90,6 +88,8 @@ void LidarClusterDetector::getPointCloud_cb(
             new pcl::PointCloud<pcl::PointXYZ>);
         pcl::PointCloud<pcl::PointXYZ>::Ptr ray_only_floor_cloud_ptr(
             new pcl::PointCloud<pcl::PointXYZ>);
+        pcl::PointCloud<pcl::PointXYZ>::Ptr clustered_cloud_ptr(
+            new pcl::PointCloud<pcl::PointXYZ>);
 
         pcl::fromROSMsg(*msg_rawPointCloud, *raw_sensor_cloud_ptr);
 
@@ -100,8 +100,7 @@ void LidarClusterDetector::getPointCloud_cb(
         removeFloorRayFiltered(downsample_cloud_ptr, ray_only_floor_cloud_ptr, ray_no_floor_cloud_ptr, sensor_height,
             local_threshold_slope, general_threshold_slope);
 
-        //segmentByDistance(ray_no_floor_cloud_ptr, colored_clustered_cloud_ptr, centroids,
-        //    cloud_clusters);
+        segmentByDistance(raw_sensor_cloud_ptr, clustered_cloud_ptr);
 
         pubPointCloud(pub_testPointCloud, ray_only_floor_cloud_ptr);
         pubPointCloud(pub2_testPointCloud, ray_no_floor_cloud_ptr);
@@ -150,16 +149,18 @@ void LidarClusterDetector::segmentByDistance(const pcl::PointCloud<pcl::PointXYZ
         }
     }
 
-    std::vector<ClusterPtr> clusters;
+    std::vector<Cluster> clusters;
     for (size_t i = 0; i < cloud_segments_array.size(); i++) {
-        clusterCpu(cloud_segments_array[i], clusters, seg_distances[i]);
+        if (cloud_segments_array[i]->points.size() > 10) {
+            clusterCpu(cloud_segments_array[i], clusters, seg_distances[i]);
+        }
     }
-    std::vector<ClusterPtr> all_clusters;
+
+    std::vector<Cluster> all_clusters;
     all_clusters.insert(all_clusters.end(), clusters.begin(), clusters.end());
 
-    std::vector<ClusterPtr> mid_clusters;
-    std::vector<ClusterPtr> final_clusters;
-
+    std::vector<Cluster> mid_clusters;
+    std::vector<Cluster> final_clusters;
     if (all_clusters.size() > 0)
         checkAllForMerge(all_clusters, mid_clusters, cluster_merge_threshold);
     else
@@ -169,17 +170,19 @@ void LidarClusterDetector::segmentByDistance(const pcl::PointCloud<pcl::PointXYZ
         checkAllForMerge(mid_clusters, final_clusters, cluster_merge_threshold);
     else
         final_clusters = mid_clusters;
+
+    pubClustersRviz(final_clusters, pub_clusters_Rviz);
 }
 
-void LidarClusterDetector::checkClusterMerge(size_t in_cluster_id, std::vector<ClusterPtr>& in_clusters,
+void LidarClusterDetector::checkClusterMerge(size_t in_cluster_id, std::vector<Cluster>& in_clusters,
     std::vector<bool>& in_out_visited_clusters, std::vector<size_t>& out_merge_indices,
     double in_merge_threshold)
 {
     // std::cout << "checkClusterMerge" << std::endl;
-    pcl::PointXYZ point_a = in_clusters[in_cluster_id]->GetCentroid();
+    pcl::PointXYZ point_a = in_clusters[in_cluster_id].GetCentroid();
     for (size_t i = 0; i < in_clusters.size(); i++) {
         if (i != in_cluster_id && !in_out_visited_clusters[i]) {
-            pcl::PointXYZ point_b = in_clusters[i]->GetCentroid();
+            pcl::PointXYZ point_b = in_clusters[i].GetCentroid();
             double distance = sqrt(pow(point_b.x - point_a.x, 2) + pow(point_b.y - point_a.y, 2));
             if (distance <= in_merge_threshold) {
                 in_out_visited_clusters[i] = true;
@@ -191,16 +194,16 @@ void LidarClusterDetector::checkClusterMerge(size_t in_cluster_id, std::vector<C
     }
 }
 
-void LidarClusterDetector::mergeClusters(const std::vector<ClusterPtr>& in_clusters, std::vector<ClusterPtr>& out_clusters,
+void LidarClusterDetector::mergeClusters(std::vector<Cluster>& in_clusters, std::vector<Cluster>& out_clusters,
     std::vector<size_t> in_merge_indices, const size_t& current_index,
     std::vector<bool>& in_out_merged_clusters)
 {
     // std::cout << "mergeClusters:" << in_merge_indices.size() << std::endl;
     pcl::PointCloud<pcl::PointXYZRGB> sum_cloud;
     pcl::PointCloud<pcl::PointXYZ> mono_cloud;
-    ClusterPtr merged_cluster(new Cluster());
+    Cluster merged_cluster;
     for (size_t i = 0; i < in_merge_indices.size(); i++) {
-        sum_cloud += *(in_clusters[in_merge_indices[i]]->GetCloud());
+        sum_cloud += in_clusters[in_merge_indices[i]].GetCloud();
         in_out_merged_clusters[in_merge_indices[i]] = true;
     }
     std::vector<int> indices(sum_cloud.points.size(), 0);
@@ -210,12 +213,12 @@ void LidarClusterDetector::mergeClusters(const std::vector<ClusterPtr>& in_clust
 
     if (sum_cloud.points.size() > 0) {
         pcl::copyPointCloud(sum_cloud, mono_cloud);
-        merged_cluster->SetCloud(mono_cloud.makeShared(), color_table, indices, current_index);
+        merged_cluster.SetCloud(mono_cloud.makeShared(), color_table, indices, current_index);
         out_clusters.push_back(merged_cluster);
     }
 }
 
-void LidarClusterDetector::checkAllForMerge(std::vector<ClusterPtr>& in_clusters, std::vector<ClusterPtr>& out_clusters,
+void LidarClusterDetector::checkAllForMerge(std::vector<Cluster>& in_clusters, std::vector<Cluster>& out_clusters,
     float in_merge_threshold)
 {
     // std::cout << "checkAllForMerge" << std::endl;
@@ -244,14 +247,13 @@ void LidarClusterDetector::checkAllForMerge(std::vector<ClusterPtr>& in_clusters
  * @description: 对聚类结果进行后处理，生成聚类的相关信息保存到cluster类中
  */
 void LidarClusterDetector::clusterCpu(const pcl::PointCloud<pcl::PointXYZ>::Ptr& in_cloud,
-    std::vector<ClusterPtr>& clusters, const double& max_cluster_dis)
+    std::vector<Cluster>& clusters, const double& max_cluster_dis)
 {
     pcl::search::KdTree<pcl::PointXYZ>::Ptr tree(new pcl::search::KdTree<pcl::PointXYZ>);
 
     pcl::PointCloud<pcl::PointXYZ>::Ptr cloud_2d(new pcl::PointCloud<pcl::PointXYZ>);
 
     pcl::copyPointCloud(*in_cloud, *cloud_2d);
-
     for (size_t i = 0; i < cloud_2d->points.size(); i++) {
         cloud_2d->points[i].z = 0;
     }
@@ -273,8 +275,9 @@ void LidarClusterDetector::clusterCpu(const pcl::PointCloud<pcl::PointXYZ>::Ptr&
     euc.extract(cluster_indices);
 
     for (size_t j = 0; j < cluster_indices.size(); j++) {
-        ClusterPtr one_cluster;
-        one_cluster->SetCloud(in_cloud, color_table, cluster_indices[j].indices, j);
+        Cluster one_cluster;
+        one_cluster.SetCloud(in_cloud, color_table, cluster_indices[j].indices, j);
+
         clusters.push_back(one_cluster);
     }
 }

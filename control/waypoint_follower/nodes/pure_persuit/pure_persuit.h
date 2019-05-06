@@ -4,7 +4,7 @@
  * @Github: https://github.com/sunmiaozju
  * @LastEditors: sunm
  * @Date: 2019-01-29 21:10:23
- * @LastEditTime: 2019-03-27 20:50:24
+ * @LastEditTime: 2019-05-05 20:20:17
  */
 #ifndef PURE_PURSUIT_H
 #define PURE_PURSUIT_H
@@ -14,6 +14,7 @@
 #include "smartcar_msgs/Lane.h"
 #include "smartcar_msgs/LaneArray.h"
 #include <can_msgs/ecu.h>
+#include <can_msgs/vehicle_status.h>
 #include <geometry_msgs/PoseStamped.h>
 #include <geometry_msgs/TwistStamped.h>
 #include <nav_msgs/Path.h>
@@ -66,6 +67,10 @@ private:
     bool is_last_point;
     bool is_yunleCar;
 
+    bool is_in_cross;
+    double cross_lookahead_dis;
+    double lane_lookahead_dis;
+
 public:
     PurePursuitNode();
 
@@ -76,7 +81,7 @@ public:
     // callbacks
     void callbackFromCurrentPose(const geometry_msgs::PoseStampedConstPtr& msg);
 
-    void callbackFromCurrentVelocity(const geometry_msgs::TwistStampedConstPtr& msg);
+    void callbackFromCurrentVelocity(const can_msgs::vehicle_status& msg);
 
     void callbackFromWayPoints(const smartcar_msgs::LaneConstPtr& msg);
 

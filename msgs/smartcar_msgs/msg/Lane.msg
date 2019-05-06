@@ -10,5 +10,5 @@ float64 long_cost
 
 float64 closest_obj_dis
 bool is_blocked
-int32 best_rollout_index
+int32 best_rollout_index 
 
