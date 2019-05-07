@@ -152,10 +152,19 @@ void PurePursuitNode::getNextWaypoint()
 
                 if (search_radius > 2)
                     search_radius -= 0.5;
-                if (clearest_points_index == path_size - 1) {
+	        printf("--------------clearest: %d  size : %d is_last : %d\n", clearest_points_index, path_size, is_last_point);
+                if (clearest_points_index >= path_size - 2) {
+	            
                     is_last_point = true;
                 }
             }
+
+	    if(is_last_point){
+	         next_waypoint_number_ = path_size - 1;
+                 // is_find_clearest_point = false;
+                 return;
+            }
+		
             // 如果还没有开始找到最临近点，那么就扩大最临近点查找半径，同时不需要查找预瞄点
             if (is_find_clearest_point) {
                 if (!almost_reach) {
@@ -194,7 +203,7 @@ void PurePursuitNode::getNextWaypoint()
                         }
 
                         if (next_waypoint_number_ == path_size - 1) {
-                            command_linear_velocity_ = 1.0; // 准备停车的速度
+                            command_linear_velocity_ = 1.0 * 3.6; // 准备停车的速度
                             almost_reach = true; // 准备到达终点
                         }
 
@@ -203,9 +212,9 @@ void PurePursuitNode::getNextWaypoint()
 
                         // 判断是否进入弯道
                         if (is_in_cross) {
-                            command_linear_velocity_ = 0.5; // 弯道处的速度
+                            command_linear_velocity_ = 0.5 * 3.6; // 弯道处的速度
                         } else {
-                            command_linear_velocity_ = 1.5; // 直线的速度
+                            command_linear_velocity_ = 1.5 * 3.6; // 直线的速度
                         }
 
                         // 循环出口
@@ -231,10 +240,9 @@ void PurePursuitNode::getNextWaypoint()
         pre_index = -1;
 
         // if this program reaches here , it means we lost the waypoint!
-
-        next_waypoint_number_ = -1;
-        return;
     }
+    next_waypoint_number_ = -1;
+    return;
 }
 // linear interpolation of next target
 bool PurePursuitNode::interpolateNextTarget(int next_waypoint, geometry_msgs::Point* next_target)
@@ -384,7 +392,7 @@ void PurePursuitNode::publishControlCommandStamped(const bool& can_get_curvature
     if (is_yunleCar) {
         can_msgs::ecu ecu_ctl;
         ecu_ctl.motor = can_get_curvature ? computeCommandVelocity() : 0;
-
+	ecu_ctl.motor = computeCommandVelocity();	
         double steer = atan(wheel_base_ * curvature);
 
         if (steer > 0) {
@@ -400,7 +408,8 @@ void PurePursuitNode::publishControlCommandStamped(const bool& can_get_curvature
         if (is_last_point) {
             ecu_ctl.motor = 0;
             ecu_ctl.shift = ecu_ctl.SHIFT_N;
-            ecu_ctl.brake = true;
+            ecu_ctl.brake = false;
+            ecu_ctl.steer = 0;
         }
         pub_yunle_control.publish(ecu_ctl);
 
