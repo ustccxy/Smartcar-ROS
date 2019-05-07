@@ -4,7 +4,7 @@
  * @Github: https://github.com/sunmiaozju
  * @LastEditors: sunm
  * @Date: 2019-02-21 10:47:42
- * @LastEditTime: 2019-05-07 21:22:19
+ * @LastEditTime: 2019-05-07 21:55:57
  */
 // ROS Includes
 #include "pure_persuit.h"
@@ -24,7 +24,7 @@ PurePursuitNode::PurePursuitNode()
     , lookahead_distance_(0)
     , is_last_point(false)
     , is_in_cross(false)
-    , is_not_lane(false)
+    , is_not_lane(true)
     , pre_index(-1)
     , search_start_index(0)
     , clearest_points_index(-1)
@@ -88,6 +88,7 @@ void PurePursuitNode::run()
         } else {
             // 将前视距离与速度关联起来，速度越快，前视觉距离越远
             lookahead_distance_ = computeLookaheadDistance();
+            // printf("------------lookahead: %f\n", lookahead_distance_);
 
             double curvature = 0;
             bool can_get_curvature = computeCurvature(&curvature);
@@ -154,7 +155,6 @@ void PurePursuitNode::getNextWaypoint()
                 if (dis <= pre_dis) {
                     clearest_points_index = i;
                     is_find_clearest_point = true;
-
                     if (search_radius > 2)
                         search_radius -= 0.5;
                     if (clearest_points_index >= path_size - 2) {
@@ -180,21 +180,21 @@ void PurePursuitNode::getNextWaypoint()
                         }
 
                         // 判断为刚开始进入弯道
-                        printf("^^^^pre_index: %d\n", pre_index);
+                        // printf("^^^^pre_index: %d\n", pre_index);
                         if (pre_index >= 0) {
                             // if (lock_index > 0) {
                             //     double test = getPlaneDistance(current_waypoints_.at(lock_index).pose.pose.position, current_waypoints_.at(clearest_points_index).pose.pose.position);
                             //     printf("test dis lock and clearest: %f\n", test);
                             // }
-                            printf("------pre_index.is_lane: %d, next.is_lane: %d\n", current_waypoints_[pre_index].is_lane, current_waypoints_[next_waypoint_number_].is_lane);
+                            // printf("------pre_index.is_lane: %d, next.is_lane: %d\n", current_waypoints_[pre_index].is_lane, current_waypoints_[next_waypoint_number_].is_lane);
                             if (!cross_in && current_waypoints_[pre_index].is_lane == 1 && current_waypoints_[next_waypoint_number_].is_lane == 0) {
-                                printf("--------in cross----------------\n");
+                                // printf("--------in cross----------------\n");
                                 cross_in = true;
                                 lock_index = next_waypoint_number_;
                             }
                             //判断车辆已经结束刚刚进入弯道的状态，正式进入弯道，速度下降，预瞄距离下降
                             else if (cross_in && getPlaneDistance(current_waypoints_.at(lock_index).pose.pose.position, current_waypoints_.at(clearest_points_index).pose.pose.position) < cross_lookahead_dis) {
-                                printf("###############\n");
+                                // printf("###############\n");
                                 cross_in = false;
                                 is_in_cross = true;
                                 next_waypoint_number_ = lock_index;
@@ -211,12 +211,12 @@ void PurePursuitNode::getNextWaypoint()
                                 is_in_cross = false;
                             }
                         }
-                        // // 判断是否在直线上
-                        // if (!current_waypoints_[clearest_points_index].is_lane) {
-                        //     is_in_cross = true;
-                        // } else {
-                        //     is_in_cross = false;
-                        // }
+                        // 判断是否在直线上
+                        if (!current_waypoints_[clearest_points_index].is_lane) {
+                            is_not_lane = true;
+                        } else {
+                            is_not_lane = false;
+                        }
 
                         // 判断为准备到达终点
                         if (next_waypoint_number_ == path_size - 1) {
@@ -227,13 +227,14 @@ void PurePursuitNode::getNextWaypoint()
                         search_start_index = (next_waypoint_number_ - 15 > 0) ? (next_waypoint_number_ - 15) : 0;
                         pre_index = next_waypoint_number_;
 
-                        // 判断是否在直线上，修改前进速度
-                        if (is_in_cross) {
-                            command_linear_velocity_ = cross_speed_limit; // 弯道处的速度
-                        } else {
-                            command_linear_velocity_ = lane_speed_limit; // 直线的速度
-                        }
-                        printf("next : %d, clearest: %d\n", next_waypoint_number_, clearest_points_index);
+                        // // 判断是否在直线上，修改前进速度
+                        // if (is_in_cross) {
+                        //     command_linear_velocity_ = cross_speed_limit; // 弯道处的速度
+                        // } else {
+                        //     command_linear_velocity_ = lane_speed_limit; // 直线的速度
+                        // }
+                        // printf("next : %d, clearest: %d\n", next_waypoint_number_, clearest_points_index);
+
                         // 循环出口
                         if (is_find_clearest_point) {
                             is_find_clearest_point = false;
@@ -254,7 +255,7 @@ void PurePursuitNode::getNextWaypoint()
         clearest_points_index = -1;
         search_start_index = 0;
         is_find_clearest_point = false;
-        printf("relarge redius, redius: %f", search_radius);
+        // printf("relarge redius, redius: %f\n", search_radius);
         // pre_index = -1;
 
         // if this program reaches here , it means we lost the waypoint!
@@ -405,7 +406,7 @@ double PurePursuitNode::calcCurvature(geometry_msgs::Point target)
     return curvature;
 }
 
-void PurePursuitNode::publishControlCommandStamped(const bool& can_get_curvature, const double& curvature) const
+void PurePursuitNode::publishControlCommandStamped(const bool& can_get_curvature, const double& curvature)
 {
     if (is_yunleCar) {
         can_msgs::ecu ecu_ctl;
@@ -445,7 +446,7 @@ void PurePursuitNode::publishControlCommandStamped(const bool& can_get_curvature
 double PurePursuitNode::computeLookaheadDistance() const
 {
     if (is_const_lookahead_dis_ == true) {
-        if (is_in_cross) {
+        if (is_in_cross || is_not_lane) {
             return cross_lookahead_dis;
         } else {
             return lane_lookahead_dis;
@@ -458,11 +459,17 @@ double PurePursuitNode::computeLookaheadDistance() const
     return ld < (minimum_lookahead_distance_) ? minimum_lookahead_distance_ : (ld > maximum_lookahead_distance) ? maximum_lookahead_distance : ld;
 }
 
-double PurePursuitNode::computeCommandVelocity() const
+double PurePursuitNode::computeCommandVelocity()
 {
     if (is_const_speed_command_ == true)
         return const_velocity_;
-    // printf("-----------command_speed: %f\n", command_linear_velocity_);
+    // 判断是否在直线上，修改前进速度
+    if (is_in_cross || is_not_lane) {
+        command_linear_velocity_ = cross_speed_limit; // 弯道处的速度
+    } else {
+        command_linear_velocity_ = lane_speed_limit; // 直线的速度
+    }
+    // printf("--------------speed: %f\n", command_linear_velocity_);
     return command_linear_velocity_;
 }
 
@@ -502,6 +509,7 @@ void PurePursuitNode::callbackFromWayPoints(const smartcar_msgs::LaneConstPtr& m
     almost_reach = false;
     lock_index = -1;
     save_index = -1;
+    is_not_lane = true;
 }
 
 geometry_msgs::Point PurePursuitNode::calcRelativeCoordinate(geometry_msgs::Point point_msg, geometry_msgs::Pose current_pose)

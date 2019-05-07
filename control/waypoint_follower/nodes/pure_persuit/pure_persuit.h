@@ -4,7 +4,7 @@
  * @Github: https://github.com/sunmiaozju
  * @LastEditors: sunm
  * @Date: 2019-01-29 21:10:23
- * @LastEditTime: 2019-05-07 20:32:38
+ * @LastEditTime: 2019-05-07 21:34:24
  */
 #ifndef PURE_PURSUIT_H
 #define PURE_PURSUIT_H
@@ -115,11 +115,11 @@ public:
 
     void getNextWaypoint();
 
-    void publishControlCommandStamped(const bool& can_get_curvature, const double& curvature) const;
+    void publishControlCommandStamped(const bool& can_get_curvature, const double& curvature);
 
     double computeLookaheadDistance() const;
 
-    double computeCommandVelocity() const;
+    double computeCommandVelocity();
 
     geometry_msgs::Point calcRelativeCoordinate(geometry_msgs::Point point_msg, geometry_msgs::Pose current_pose);
 
