@@ -44,7 +44,6 @@ private:
     ros::Subscriber sub_startPose, sub_endPose;
     ros::Publisher pub_path, pub_vis_path, pub_debug_path, pub_arrow_array;
     ros::Publisher pub_marker_start, pub_marker_end;
-    bool is_startPose_set, is_endPose_set;
 
     ros::Publisher pub_car_model;
     bool is_simulate_car;
@@ -73,13 +72,18 @@ private:
     nav_msgs::Path vis_path;
     smartcar_msgs::Lane result_path;
 
+    geometry_msgs::PoseStamped current_pose;
+    bool current_pose_initialed;
+
+    void update_current_pose(const geometry_msgs::PoseStampedConstPtr &msg);
+
     void constract_Lane_Cross_vec(const std::string path);
     void getAllFiles(const std::string path, std::vector<std::string> &files);
     void readAllFiles(std::vector<std::string> files);
     std::vector<int> get_line_nums(std::string line);
 
     geometry_msgs::PoseStamped start_pose, end_pose;
-    void startPose_cb(const geometry_msgs::PoseWithCovarianceStampedConstPtr &msg);
+    bool startPose_cb();
     void endPose_cb(const geometry_msgs::PoseStampedConstPtr &msg);
 
     double find_nearest_pose(int &lane_id, int &point_index, const geometry_msgs::PoseStamped pose, const std::vector<path_msgs::Lane> path_list);
@@ -99,7 +103,10 @@ private:
     bool validate(double dist, geometry_msgs::PoseStamped pose, std::vector<path_msgs::Cross> path_list);
 
 public:
-    global_plan() {}
+    global_plan()
+    {
+        current_pose_initialed = false;
+    }
     ~global_plan() {}
 
     void init();
@@ -112,9 +119,6 @@ void global_plan::init()
 {
     ros::NodeHandle pnh("~");
     ros::NodeHandle nh;
-
-    is_startPose_set = false;
-    is_endPose_set = false;
 
     vis_path.header.frame_id = "map";
 
@@ -133,7 +137,7 @@ void global_plan::init()
 
     constract_Lane_Cross_vec(path);
 
-    sub_startPose = nh.subscribe("/initialpose", 1, &GLOBAL_PLANNER::global_plan::startPose_cb, this);
+    sub_startPose = nh.subscribe("/ndt/current_pose", 1, &GLOBAL_PLANNER::global_plan::update_current_pose, this);
     sub_endPose = nh.subscribe("/move_base_simple/goal", 1, &GLOBAL_PLANNER::global_plan::endPose_cb, this);
     pub_path = nh.advertise<smartcar_msgs::Lane>("global_path", 1);
     pub_vis_path = nh.advertise<nav_msgs::Path>("/vis_global_path", 1);
@@ -148,6 +152,13 @@ void global_plan::init()
     cfg_server.setCallback(cfg_callback);
 
     ros::spin();
+}
+
+void global_plan::update_current_pose(const geometry_msgs::PoseStampedConstPtr &msg)
+{
+    current_pose = *msg;
+    current_pose_initialed = true;
+    return;
 }
 
 void global_plan::constract_Lane_Cross_vec(const std::string path)
@@ -315,13 +326,13 @@ std::vector<int> global_plan::get_line_nums(std::string line)
     return res;
 }
 
-void global_plan::startPose_cb(const geometry_msgs::PoseWithCovarianceStampedConstPtr &msg)
+bool global_plan::startPose_cb()
 {
     ROS_INFO_STREAM("Start Pose Handler");
-    marker_start.pose = msg->pose.pose;
+    marker_start.pose = current_pose.pose;
     pub_marker_start.publish(marker_start);
 
-    start_pose.pose = msg->pose.pose;
+    start_pose.pose = current_pose.pose;
     temp_Lane_vec.clear();
     temp_Lane_vec.assign(Lane_vec.begin(), Lane_vec.end());
     temp_Cross_vec.clear();
@@ -331,8 +342,8 @@ void global_plan::startPose_cb(const geometry_msgs::PoseWithCovarianceStampedCon
     double min_dist = find_nearest_pose(lane_id, point_index, start_pose, temp_Lane_vec);
     if (validate(min_dist, start_pose, temp_Cross_vec) == false)
     {
-        ROS_WARN_STREAM("Target position cannot be put at cornor, please confirm again.");
-        return;
+        ROS_WARN_STREAM("Start position cannot be put at cornor, please confirm again or drive out.");
+        return false;
     }
 
     double start_roll, start_pitch, start_yaw;
@@ -533,12 +544,12 @@ void global_plan::startPose_cb(const geometry_msgs::PoseWithCovarianceStampedCon
         temp_Lane_vec.push_back(l_node);
     }
 
-    is_startPose_set = true;
     temp_Lane_vec[lane_id].next_id.clear();
     temp_Lane_vec[lane_id].pre_id.clear();
     temp_Lane_vec[lane_id].path.poses.clear();
     std::cout << "Start Pose Seted " << std::endl;
     std::cout << "------------------------" << std::endl;
+    return true;
 }
 
 void global_plan::endPose_cb(const geometry_msgs::PoseStampedConstPtr &msg)
@@ -552,17 +563,22 @@ void global_plan::endPose_cb(const geometry_msgs::PoseStampedConstPtr &msg)
     marker_end.pose = msg->pose;
     pub_marker_end.publish(marker_end);
 
-    if (!is_startPose_set)
+    if (!current_pose_initialed)
     {
-        ROS_WARN_STREAM("Please set start pose first.");
+        ROS_WARN_STREAM("global_plan: current_pose not set!");
         return;
     }
+    if (!startPose_cb())
+    {
+        ROS_WARN_STREAM("start pose handler error: maybe the car is at cornor, which is forbidened.");
+        return;
+    };
     end_pose.pose = msg->pose;
     int lane_id, point_index;
     double min_dist = find_nearest_pose(lane_id, point_index, end_pose, temp_Lane_vec);
     if (validate(min_dist, end_pose, temp_Cross_vec) == false)
     {
-        ROS_WARN_STREAM("Target position cannot be put at cornor, please confirm again.");
+        ROS_WARN_STREAM("End position cannot be put at cornor, please confirm again.");
         return;
     }
 
@@ -720,8 +736,6 @@ void global_plan::endPose_cb(const geometry_msgs::PoseStampedConstPtr &msg)
             ros::Duration(0.05).sleep();
         }
     }
-
-    is_startPose_set = false;
 }
 
 double global_plan::find_nearest_pose(int &lane_id, int &point_index, const geometry_msgs::PoseStamped pose, const std::vector<path_msgs::Lane> path_list)

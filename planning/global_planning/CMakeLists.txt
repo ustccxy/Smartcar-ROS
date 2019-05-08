@@ -58,6 +58,13 @@ add_dependencies(load_static_path
   # ${PROJECT_NAME}_gencfg
 )
 
+add_executable(global_plan_dynamic src/global_plan_dynamic.cpp)
+target_link_libraries(global_plan_dynamic ${catkin_LIBRARIES})
+add_dependencies(global_plan_dynamic
+  ${${PROJECT_NAME}_EXPORTED_TARGETS}
+  ${catkin_EXPORTED_TARGETS}
+  ${PROJECT_NAME}_gencfg
+)
 
 
 

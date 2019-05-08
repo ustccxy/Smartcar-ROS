@@ -44,7 +44,7 @@
         <param name="Visualize_Simulation" value="false" />
     </node> -->
 
-    <node pkg="global_planning" type="global_plan_node" name="Global_planner_with_defined_paths" output="screen">
+    <node pkg="global_planning" type="global_plan_dynamic" name="Global_planner_with_defined_paths" output="screen">
         <param name="file_path" value="$(find global_planning)/path_file_Yunlecar/" />
         <param name="debug" value="true" />
         <param name="weight_data" value="0.47" />
