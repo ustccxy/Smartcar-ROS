@@ -4,7 +4,7 @@
  * @Github: https://github.com/sunmiaozju
  * @LastEditors: sunm
  * @Date: 2019-01-29 21:10:23
- * @LastEditTime: 2019-05-05 20:20:17
+ * @LastEditTime: 2019-05-07 21:34:24
  */
 #ifndef PURE_PURSUIT_H
 #define PURE_PURSUIT_H
@@ -17,6 +17,7 @@
 #include <can_msgs/vehicle_status.h>
 #include <geometry_msgs/PoseStamped.h>
 #include <geometry_msgs/TwistStamped.h>
+#include <math.h>
 #include <nav_msgs/Path.h>
 #include <ros/ros.h>
 #include <std_msgs/Float32.h>
@@ -68,8 +69,23 @@ private:
     bool is_yunleCar;
 
     bool is_in_cross;
+    bool is_not_lane;
     double cross_lookahead_dis;
     double lane_lookahead_dis;
+
+    int pre_index;
+    int search_start_index;
+    int clearest_points_index;
+
+    float search_radius;
+    bool cross_in;
+    bool cross_out;
+    bool almost_reach;
+    int lock_index;
+    int save_index;
+
+    double lane_speed_limit;
+    double cross_speed_limit;
 
 public:
     PurePursuitNode();
@@ -99,11 +115,11 @@ public:
 
     void getNextWaypoint();
 
-    void publishControlCommandStamped(const bool& can_get_curvature, const double& curvature) const;
+    void publishControlCommandStamped(const bool& can_get_curvature, const double& curvature);
 
     double computeLookaheadDistance() const;
 
-    double computeCommandVelocity() const;
+    double computeCommandVelocity();
 
     geometry_msgs::Point calcRelativeCoordinate(geometry_msgs::Point point_msg, geometry_msgs::Pose current_pose);
 

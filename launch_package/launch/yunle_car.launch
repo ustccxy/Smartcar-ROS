@@ -10,7 +10,7 @@
 
     <include file="$(find calibration_publisher)/launch/yunlecar_calibration_publisher.launch" />
 	
-    <include file="$(find joint_pixel_pointcloud)/launch/joint_pixel_pointcloud.launch" />
+    <!-- <include file="$(find joint_pixel_pointcloud)/launch/joint_pixel_pointcloud.launch" />-->
 
     <!-- <include file="$(find hall_encoder)/launch/hall_encoder_node.launch" />-->
 

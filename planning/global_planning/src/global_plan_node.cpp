@@ -896,7 +896,7 @@ smartcar_msgs::Lane global_plan::smooth_path(smartcar_msgs::Lane path)
 
         for (int i = 0; i <= front_index; i++) {
             smartcar_msgs::Waypoint temp;
-            temp.is_lane = 1;
+            temp.is_lane = 0;
             temp.speed_limit = 0.5;
             temp.pose.pose.position.x = lane_front[i].pose.pose.position.x + diff_x;
             temp.pose.pose.position.y = lane_front[i].pose.pose.position.y + diff_y;
@@ -911,7 +911,7 @@ smartcar_msgs::Lane global_plan::smooth_path(smartcar_msgs::Lane path)
         double dy = leny / cnt_front;
         for (int i = 1; i < cnt_front; i++) {
             smartcar_msgs::Waypoint temp;
-            temp.is_lane = 1;
+            temp.is_lane = 0;
             temp.speed_limit = 1.0; // 缓慢起步
             temp.pose.pose.position.x = s.pose.pose.position.x + i * dx;
             temp.pose.pose.position.y = s.pose.pose.position.y + i * dy;
@@ -945,7 +945,7 @@ smartcar_msgs::Lane global_plan::smooth_path(smartcar_msgs::Lane path)
 
         for (int i = lane_end.size() - 1; i > end_index; i--) {
             smartcar_msgs::Waypoint temp;
-            temp.is_lane = 1;
+            temp.is_lane = 0;
             temp.speed_limit = 0.5;
             temp.pose.pose.position.x = lane_end[i].pose.pose.position.x + diff_x;
             temp.pose.pose.position.y = lane_end[i].pose.pose.position.y + diff_y;
@@ -960,7 +960,7 @@ smartcar_msgs::Lane global_plan::smooth_path(smartcar_msgs::Lane path)
         double dy = leny / cnt_end;
         for (int i = cnt_end; i > 0; i--) {
             smartcar_msgs::Waypoint temp;
-            temp.is_lane = 1;
+            temp.is_lane = 0;
             temp.speed_limit = 1.0;
             temp.pose.pose.position.x = e.pose.pose.position.x - (cnt_end - i) * dx;
             temp.pose.pose.position.y = e.pose.pose.position.y - (cnt_end - i) * dy;

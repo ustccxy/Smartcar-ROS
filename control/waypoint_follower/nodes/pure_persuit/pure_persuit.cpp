@@ -4,7 +4,7 @@
  * @Github: https://github.com/sunmiaozju
  * @LastEditors: sunm
  * @Date: 2019-02-21 10:47:42
- * @LastEditTime: 2019-05-06 09:56:46
+ * @LastEditTime: 2019-05-07 21:55:57
  */
 // ROS Includes
 #include "pure_persuit.h"
@@ -24,6 +24,18 @@ PurePursuitNode::PurePursuitNode()
     , lookahead_distance_(0)
     , is_last_point(false)
     , is_in_cross(false)
+    , is_not_lane(true)
+    , pre_index(-1)
+    , search_start_index(0)
+    , clearest_points_index(-1)
+    , search_radius(2)
+    , cross_in(false)
+    , cross_out(false)
+    , almost_reach(false)
+    , lock_index(-1)
+    , save_index(-1)
+    , lane_speed_limit(1.5 * 3.6)
+    , cross_speed_limit(0.5 * 3.6)
 {
     // 设置了订阅，发布的话题消息， 读取了launch文件中的配置变量
     initForROS();
@@ -40,13 +52,13 @@ void PurePursuitNode::initForROS()
     private_nh_.param("is_linear_interpolation", is_linear_interpolation_, bool(false));
     private_nh_.param("wheel_base", wheel_base_, double(0.5));
     private_nh_.param("lookahead_distance_ratio", lookahead_distance_ratio_, double(6.0)); //假设速度的单位是m/s, 1M/S的预瞄距离是4m
-    private_nh_.param("minimum_lookahead_distance_", minimum_lookahead_distance_, double(2.5));
-    private_nh_.param("const_lookahead_distance_", const_lookahead_distance_, double(4));
-    private_nh_.param("const_velocity_", const_velocity_, double(1)); //1m/s
+    private_nh_.param("minimum_lookahead_distance_", minimum_lookahead_distance_, double(2));
+    private_nh_.param("const_lookahead_distance_", const_lookahead_distance_, double(5));
+    private_nh_.param("const_velocity_", const_velocity_, double(5.4)); //km/h
     private_nh_.param("is_const_lookahead_dis", is_const_lookahead_dis_, true);
-    private_nh_.param("is_const_speed_command_", is_const_speed_command_, true);
+    private_nh_.param("is_const_speed_command_", is_const_speed_command_, false);
     private_nh_.param("is_yunleCar", is_yunleCar, true);
-    private_nh_.param("cross_lookahead_dis", cross_lookahead_dis, double(3));
+    private_nh_.param("cross_lookahead_dis", cross_lookahead_dis, double(2));
     private_nh_.param("lane_lookahead_dis", lane_lookahead_dis, double(9));
 
     // setup subscriber
@@ -73,20 +85,20 @@ void PurePursuitNode::run()
         if (!is_pose_set_ || !is_waypoint_set_) {
             // ROS_WARN("Necessary topics are not subscribed yet ... ");
             loop_rate.sleep();
-            continue;
+        } else {
+            // 将前视距离与速度关联起来，速度越快，前视觉距离越远
+            lookahead_distance_ = computeLookaheadDistance();
+            // printf("------------lookahead: %f\n", lookahead_distance_);
+
+            double curvature = 0;
+            bool can_get_curvature = computeCurvature(&curvature);
+            publishControlCommandStamped(can_get_curvature, curvature);
+
+            // for visualization with Rviz
+            visualInRviz();
+
+            is_pose_set_ = false;
         }
-        // 将前视距离与速度关联起来，速度越快，前视觉距离越远
-        lookahead_distance_ = computeLookaheadDistance();
-
-        double curvature = 0;
-        bool can_get_curvature = computeCurvature(&curvature);
-        publishControlCommandStamped(can_get_curvature, curvature);
-
-        // for visualization with Rviz
-        visualInRviz();
-
-        is_pose_set_ = false;
-        // is_waypoint_set_ = false;
     }
 }
 
@@ -121,15 +133,8 @@ bool PurePursuitNode::computeCurvature(double* output_curvature)
 void PurePursuitNode::getNextWaypoint()
 {
     int path_size = static_cast<int>(current_waypoints_.size());
-    static int pre_index = -1;
-    static int search_start_index = 0;
-    static int clearest_points_index = -1;
     bool is_find_clearest_point = false;
-    static float search_radius = 2;
-    bool cross_in = false;
-    bool cross_out = false;
-    int lock_index;
-    int save_index;
+    double pre_dis;
 
     // if waypoints are not given, do nothing.
     if (path_size == 0) {
@@ -147,52 +152,99 @@ void PurePursuitNode::getNextWaypoint()
 
             // 寻找车辆当前的最临近点
             if (dis < search_radius) {
-                clearest_points_index = i;
-                is_find_clearest_point = true;
-                if (search_radius > 2)
-                    search_radius -= 0.5;
-                if (i == path_size - 1) {
-                    is_last_point = true;
+                if (dis <= pre_dis) {
+                    clearest_points_index = i;
+                    is_find_clearest_point = true;
+                    if (search_radius > 2)
+                        search_radius -= 0.5;
+                    if (clearest_points_index >= path_size - 2) {
+                        is_last_point = true;
+                    }
                 }
+                pre_dis = dis;
+            }
+            // printf("--------------clearest: %d  size : %d is_last : %d\n", clearest_points_index, path_size, is_last_point);
+
+            if (is_last_point) {
+                next_waypoint_number_ = path_size - 1;
+                return;
             }
 
-            if ((dis > lookahead_distance_) && (pre_index <= i) && (clearest_points_index <= i)) {
-                next_waypoint_number_ = i;
-                if (!cross_in) { // 如果标志为“刚开始进入弯道”为正，保持预瞄点不变
-                    next_waypoint_number_ = lock_index;
+            // 如果还没有开始找到最临近点，那么就扩大最临近点查找半径，同时不需要查找预瞄点
+            if (is_find_clearest_point) {
+                if (!almost_reach) {
+                    if ((dis > lookahead_distance_) && (pre_index <= i) && (clearest_points_index <= i)) {
+                        next_waypoint_number_ = i;
+                        if (cross_in) { // 如果标志为“刚开始进入弯道”为正，保持预瞄点不变
+                            next_waypoint_number_ = lock_index;
+                        }
+
+                        // 判断为刚开始进入弯道
+                        // printf("^^^^pre_index: %d\n", pre_index);
+                        if (pre_index >= 0) {
+                            // if (lock_index > 0) {
+                            //     double test = getPlaneDistance(current_waypoints_.at(lock_index).pose.pose.position, current_waypoints_.at(clearest_points_index).pose.pose.position);
+                            //     printf("test dis lock and clearest: %f\n", test);
+                            // }
+                            // printf("------pre_index.is_lane: %d, next.is_lane: %d\n", current_waypoints_[pre_index].is_lane, current_waypoints_[next_waypoint_number_].is_lane);
+                            if (!cross_in && current_waypoints_[pre_index].is_lane == 1 && current_waypoints_[next_waypoint_number_].is_lane == 0) {
+                                // printf("--------in cross----------------\n");
+                                cross_in = true;
+                                lock_index = next_waypoint_number_;
+                            }
+                            //判断车辆已经结束刚刚进入弯道的状态，正式进入弯道，速度下降，预瞄距离下降
+                            else if (cross_in && getPlaneDistance(current_waypoints_.at(lock_index).pose.pose.position, current_waypoints_.at(clearest_points_index).pose.pose.position) < cross_lookahead_dis) {
+                                // printf("###############\n");
+                                cross_in = false;
+                                is_in_cross = true;
+                                next_waypoint_number_ = lock_index;
+                            }
+
+                            // 记下车辆出弯道的点的index
+                            if (!cross_out && current_waypoints_[pre_index].is_lane == 0 && current_waypoints_[next_waypoint_number_].is_lane == 1) {
+                                cross_out = true;
+                                save_index = next_waypoint_number_;
+                            }
+                            // 判断车辆已经完全离开弯道
+                            else if (cross_out && abs(save_index - clearest_points_index) <= 2) {
+                                cross_out = false;
+                                is_in_cross = false;
+                            }
+                        }
+                        // 判断是否在直线上
+                        if (!current_waypoints_[clearest_points_index].is_lane) {
+                            is_not_lane = true;
+                        } else {
+                            is_not_lane = false;
+                        }
+
+                        // 判断为准备到达终点
+                        if (next_waypoint_number_ == path_size - 1) {
+                            command_linear_velocity_ = cross_speed_limit; // 准备停车的速度
+                            almost_reach = true; // 准备到达终点
+                        }
+
+                        search_start_index = (next_waypoint_number_ - 15 > 0) ? (next_waypoint_number_ - 15) : 0;
+                        pre_index = next_waypoint_number_;
+
+                        // // 判断是否在直线上，修改前进速度
+                        // if (is_in_cross) {
+                        //     command_linear_velocity_ = cross_speed_limit; // 弯道处的速度
+                        // } else {
+                        //     command_linear_velocity_ = lane_speed_limit; // 直线的速度
+                        // }
+                        // printf("next : %d, clearest: %d\n", next_waypoint_number_, clearest_points_index);
+
+                        // 循环出口
+                        if (is_find_clearest_point) {
+                            is_find_clearest_point = false;
+                            return;
+                        }
+                    }
                 }
-
-                // 判断为刚开始进入弯道
-                if (cross_in == false && current_waypoints_[pre_index].is_lane == 1 && current_waypoints_[next_waypoint_number_].is_lane == 0) {
-                    cross_in = true;
-                    lock_index = next_waypoint_number_;
-                } else if (cross_in && getPlaneDistance(current_waypoints_.at(lock_index).pose.pose.position, current_waypoints_.at(clearest_points_index).pose.pose.position) < cross_lookahead_dis) {
-                    cross_in = false; //判断车辆已经结束刚刚进入弯道的状态，正式进入弯道，速度下降，预瞄距离下降
-                    is_in_cross = true;
-                }
-
-                // 记下车辆出弯道的点的index
-                if (cross_out == false && current_waypoints_[pre_index].is_lane == 0 && current_waypoints_[next_waypoint_number_].is_lane == 1) {
-                    cross_out = true;
-                    save_index = next_waypoint_number_;
-                } else if (cross_out == true && abs(save_index - clearest_points_index) <= 2) // 判断车辆已经完全离开弯道
-                {
-                    cross_out = false;
-                    is_in_cross = false;
-                }
-
-                search_start_index = (i - 15 > 0) ? (i - 15) : 0;
-                pre_index = i;
-
-                // 判断是否进入弯道
-                if (is_in_cross) {
-                    command_linear_velocity_ = 0.5; // 弯道处的速度
-                } else {
-                    command_linear_velocity_ = 1.5; // 直线的速度
-                }
-
-                // 循环出口
-                if (is_find_clearest_point) {
+                // 准备到达终点
+                else {
+                    next_waypoint_number_ = path_size - 1;
                     is_find_clearest_point = false;
                     return;
                 }
@@ -203,16 +255,14 @@ void PurePursuitNode::getNextWaypoint()
         clearest_points_index = -1;
         search_start_index = 0;
         is_find_clearest_point = false;
-        pre_index = -1;
-        bool cross_out = false;
-        bool cross_in = false;
-    }
-    // if this program reaches here , it means we lost the waypoint!
+        // printf("relarge redius, redius: %f\n", search_radius);
+        // pre_index = -1;
 
+        // if this program reaches here , it means we lost the waypoint!
+    }
     next_waypoint_number_ = -1;
     return;
 }
-
 // linear interpolation of next target
 bool PurePursuitNode::interpolateNextTarget(int next_waypoint, geometry_msgs::Point* next_target)
 {
@@ -356,12 +406,12 @@ double PurePursuitNode::calcCurvature(geometry_msgs::Point target)
     return curvature;
 }
 
-void PurePursuitNode::publishControlCommandStamped(const bool& can_get_curvature, const double& curvature) const
+void PurePursuitNode::publishControlCommandStamped(const bool& can_get_curvature, const double& curvature)
 {
     if (is_yunleCar) {
         can_msgs::ecu ecu_ctl;
         ecu_ctl.motor = can_get_curvature ? computeCommandVelocity() : 0;
-
+        ecu_ctl.motor = computeCommandVelocity();
         double steer = atan(wheel_base_ * curvature);
 
         if (steer > 0) {
@@ -377,7 +427,8 @@ void PurePursuitNode::publishControlCommandStamped(const bool& can_get_curvature
         if (is_last_point) {
             ecu_ctl.motor = 0;
             ecu_ctl.shift = ecu_ctl.SHIFT_N;
-            ecu_ctl.brake = true;
+            ecu_ctl.brake = false;
+            ecu_ctl.steer = 0;
         }
         pub_yunle_control.publish(ecu_ctl);
 
@@ -395,7 +446,7 @@ void PurePursuitNode::publishControlCommandStamped(const bool& can_get_curvature
 double PurePursuitNode::computeLookaheadDistance() const
 {
     if (is_const_lookahead_dis_ == true) {
-        if (is_in_cross) {
+        if (is_in_cross || is_not_lane) {
             return cross_lookahead_dis;
         } else {
             return lane_lookahead_dis;
@@ -408,11 +459,17 @@ double PurePursuitNode::computeLookaheadDistance() const
     return ld < (minimum_lookahead_distance_) ? minimum_lookahead_distance_ : (ld > maximum_lookahead_distance) ? maximum_lookahead_distance : ld;
 }
 
-double PurePursuitNode::computeCommandVelocity() const
+double PurePursuitNode::computeCommandVelocity()
 {
     if (is_const_speed_command_ == true)
         return const_velocity_;
-
+    // 判断是否在直线上，修改前进速度
+    if (is_in_cross || is_not_lane) {
+        command_linear_velocity_ = cross_speed_limit; // 弯道处的速度
+    } else {
+        command_linear_velocity_ = lane_speed_limit; // 直线的速度
+    }
+    // printf("--------------speed: %f\n", command_linear_velocity_);
     return command_linear_velocity_;
 }
 
@@ -438,6 +495,21 @@ void PurePursuitNode::callbackFromWayPoints(const smartcar_msgs::LaneConstPtr& m
     current_waypoints_ = msg->waypoints;
 
     is_waypoint_set_ = true;
+
+    is_last_point = false;
+    next_waypoint_number_ = -1;
+    is_in_cross = false;
+    pre_index = -1;
+    search_start_index = 0;
+    clearest_points_index = -1;
+
+    search_radius = 2;
+    cross_in = false;
+    cross_out = false;
+    almost_reach = false;
+    lock_index = -1;
+    save_index = -1;
+    is_not_lane = true;
 }
 
 geometry_msgs::Point PurePursuitNode::calcRelativeCoordinate(geometry_msgs::Point point_msg, geometry_msgs::Pose current_pose)
@@ -532,9 +604,16 @@ void PurePursuitNode::visualInRviz()
             msg_arrow_marker.color.r = 1.0;
             msg_arrow_marker.color.g = 0.0;
             msg_arrow_marker.color.b = 0.0;
-            msg_arrow_marker.scale.x = 0.9;
-            msg_arrow_marker.scale.y = 0.15;
-            msg_arrow_marker.scale.z = 0.15;
+            msg_arrow_marker.scale.x = 1.5;
+            msg_arrow_marker.scale.y = 0.45;
+            msg_arrow_marker.scale.z = 0.45;
+        } else if (int(i) == clearest_points_index) {
+            msg_arrow_marker.color.r = 1.0;
+            msg_arrow_marker.color.g = 0.3;
+            msg_arrow_marker.color.b = 0.8;
+            msg_arrow_marker.scale.x = 1.5;
+            msg_arrow_marker.scale.y = 0.35;
+            msg_arrow_marker.scale.z = 0.35;
         } else {
             msg_arrow_marker.color.r = 0.0;
             msg_arrow_marker.color.g = 1.0;
