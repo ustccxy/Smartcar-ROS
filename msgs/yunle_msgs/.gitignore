@@ -1,0 +1,6 @@
+*.pyc
+*.py
+*.cpp
+*.cmake
+src/
+include/

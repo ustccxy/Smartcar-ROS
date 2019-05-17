@@ -1,0 +1,15 @@
+Header header
+string sectionId
+Station outset
+Station goal
+string fromQr
+float32 fromBaseX
+float32 fromBaseZ
+string toQr
+float32 toBaseX
+float32 toBaseZ
+string actionScene
+int8 shift
+float32 speed
+float32 curveRadis
+float32 curveAngle

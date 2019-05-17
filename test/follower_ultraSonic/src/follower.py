@@ -35,14 +35,17 @@ class APP():
             self.pub_race_cmd.publish(msg_twist)
 
     def _add_sub_(self):
-        rospy.Subscriber(self.sonic_topic, DiffSonic,
-                         self._sonic_handler, queue_size=1)
+        rospy.Subscriber(self.sonic_topic,
+                         DiffSonic,
+                         self._sonic_handler,
+                         queue_size=1)
 
     def _add_pub_(self):
         self.pub_yunle_cmd = rospy.Publisher(self.pub_topic, ecu, queue_size=1)
         self.pub_race_cmd = rospy.Publisher("ctrl_cmd", Twist, queue_size=1)
-        self.pub_vis = rospy.Publisher(
-            "/follower_vis", MarkerArray, queue_size=10)
+        self.pub_vis = rospy.Publisher("/follower_vis",
+                                       MarkerArray,
+                                       queue_size=10)
 
     def _is_validate(self, dist_left, dist_right):
         if dist_left > 4.0 or dist_right > 4.0:
@@ -52,11 +55,12 @@ class APP():
                 self.target_cnt = 0
             self._pub_stop_cmd()
             return False
-        elif (dist_left + dist_right) <= self.receiver_width or (dist_left + self.receiver_width) <= dist_right or (
-                dist_right + self.receiver_width) <= dist_left:
+        elif (dist_left + dist_right) <= self.receiver_width or (
+                dist_left + self.receiver_width) <= dist_right or (
+                    dist_right + self.receiver_width) <= dist_left:
             print("Sonic follower : Fatal Error: Cannot make Triangle")
-            print("--> width:{} left:{} right:{}".format(self.receiver_width,
-                                                         dist_left, dist_right))
+            print("--> width:{} left:{} right:{}".format(
+                self.receiver_width, dist_left, dist_right))
             self._pub_stop_cmd()
             return False
         self.target_cnt = 0
@@ -69,8 +73,8 @@ class APP():
         dist_right = msg.right / 1000.0
         if not self._is_validate(dist_left, dist_right):
             return
-        dist, angle = self._get_dis_angle(
-            self.receiver_width, dist_left, dist_right)
+        dist, angle = self._get_dis_angle(self.receiver_width, dist_left,
+                                          dist_right)
         # print angle
         if self.vehicle == "yunle_car":
             msg_ctrl = self._get_cmd_ctrl(dist, angle)
@@ -91,8 +95,8 @@ class APP():
         p = (width + l_left + l_right) / 2
         S = np.sqrt(p * (p - width) * (p - l_left) * (p - l_right))
         dis = 2 * S / width
-        l_midline = np.sqrt(l_left * l_left / 2 + l_right *
-                            l_right / 2 - width * width / 4)
+        l_midline = np.sqrt(l_left * l_left / 2 + l_right * l_right / 2 -
+                            width * width / 4)
         angle = np.arccos(dis / l_midline)
         if l_left < l_right:
             return dis, -angle
