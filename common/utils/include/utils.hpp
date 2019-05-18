@@ -12,7 +12,8 @@
 #define RAD2ANGLE(x) ((x)*57.295780)
 #define ANGLE2RAD(x) ((x)*0.0174533)
 
-namespace util {
+namespace util
+{
 
 bool pubMarkerText(const ros::Publisher pub, const geometry_msgs::Pose pose, const ros::Time stamp, const std::string frame, const std::string text)
 {
@@ -135,16 +136,16 @@ visualization_msgs::Marker CUBE()
     visualization_msgs::Marker marker;
     marker.header.frame_id = "map";
     marker.header.stamp = ros::Time::now();
-    marker.id = 0;
     marker.type = visualization_msgs::Marker::CUBE;
     marker.action = visualization_msgs::Marker::ADD;
     marker.scale.x = 1.0;
     marker.scale.y = 1.0;
     marker.scale.z = 1.0;
-    marker.color.r = 1;
+    marker.color.r = 0;
     marker.color.g = 0;
     marker.color.b = 0;
     marker.color.a = 1;
+    // set marker.id
     // set marker.pose
     // marker_end.lifetime = ros::Duration();
     return marker;
@@ -155,16 +156,36 @@ visualization_msgs::Marker ARROW()
     visualization_msgs::Marker marker;
     marker.header.frame_id = "map";
     marker.header.stamp = ros::Time::now();
-    marker.id = 0;
     marker.type = visualization_msgs::Marker::ARROW;
     marker.action = visualization_msgs::Marker::ADD;
     marker.scale.x = 2.0;
     marker.scale.y = 0.5;
     marker.scale.z = 0.5;
-    marker.color.r = 1;
+    marker.color.r = 0;
     marker.color.g = 0;
     marker.color.b = 0;
     marker.color.a = 1;
+    // set marker.id
+    // set marker.pose
+    // marker_start.lifetime = ros::Duration();
+    return marker;
+}
+
+visualization_msgs::Marker TEXT()
+{
+    visualization_msgs::Marker marker;
+    marker.header.frame_id = "map";
+    marker.header.stamp = ros::Time::now();
+    marker.type = visualization_msgs::Marker::TEXT_VIEW_FACING;
+    marker.action = visualization_msgs::Marker::ADD;
+    marker.scale.x = 2.0;
+    marker.scale.y = 2.0;
+    marker.scale.z = 2.0;
+    marker.color.r = 0;
+    marker.color.g = 0;
+    marker.color.b = 0;
+    marker.color.a = 1;
+    // set marker.id
     // set marker.pose
     // marker_start.lifetime = ros::Duration();
     return marker;

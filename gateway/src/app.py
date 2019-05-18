@@ -158,7 +158,7 @@ class App:
     def dispatch(self, msg):
         message = json.loads(msg)
         cmd = int(message["type"])
-        print("received message type: ", cmd)
+        print("[app.py:161] received message type: ", cmd)
         func = self._handler_map.get(cmd)
         if func:
             func(message)
@@ -177,13 +177,15 @@ class App:
 
             # 该处定义的定时任务包括 1.发送心跳消息 2. 发送车辆状态 3. 发送车辆位置
             self._heartbeat_timeout_job = "heartbeat_job"
-            self.timer.submit_periodical_job(self._send_heartbeat, 60, self._heartbeat_timeout_job)
+            self.timer.submit_periodical_job(self._send_heartbeat, 60,
+                                             self._heartbeat_timeout_job)
 
             self._tele_report_job = "tele_report_job"
             # self.timer.submit_periodical_job(self._send_tele_report, 0.5, self._tele_report_job)
 
             self._report_car_job = "report_car_job"
-            self.timer.submit_periodical_job(self._report_car_status, 1, self._report_car_job)
+            self.timer.submit_periodical_job(self._report_car_status, 1,
+                                             self._report_car_job)
         else:
             rospy.loginfo("[app] login to server failed")
 
@@ -241,8 +243,6 @@ class App:
     def fire_lane_autonomous(self, message):
         rospy.loginfo("received section autonomous request")
         data = json.loads(message['data'])
-        print "data"
-        print data
         if data:
             taskId = data['taskId']
             print("[app.py 246]: taskId: ", taskId)
@@ -253,11 +253,16 @@ class App:
             print "driving_task"
             print driving_task.speed
             if self._service.start_driving_task(driving_task):
-                response = self.pf.encoder_response(Command.LANE_AUTONOMOUS, int(message['requestId']), ACK.SUCCESS)
+                response = self.pf.encoder_response(Command.LANE_AUTONOMOUS,
+                                                    int(message['requestId']),
+                                                    ACK.SUCCESS)
                 self._report_task_job = taskId
-                self.timer.submit_periodical_job(self._report_task, 5, self._report_task_job)
+                self.timer.submit_periodical_job(self._report_task, 5,
+                                                 self._report_task_job)
             else:
-                response = self.pf.encoder_response(Command.LANE_AUTONOMOUS, int(message['requestId']), ACK.FAILED)
+                response = self.pf.encoder_response(Command.LANE_AUTONOMOUS,
+                                                    int(message['requestId']),
+                                                    ACK.FAILED)
             self.__client.write(response)
 
     def _report_task(self):
@@ -268,13 +273,15 @@ class App:
 
     def continue_autonomous(self, message):
         rospy.loginfo("[TaskIO] continue autonomous %s" % message)
-        response = self.pf.encoder_response(Command.CONTINUE_AUTONOMOUS, message['requestId'], ACK.SUCCESS)
+        response = self.pf.encoder_response(Command.CONTINUE_AUTONOMOUS,
+                                            message['requestId'], ACK.SUCCESS)
         self.__client.write(response)
         self._service.task_continue()
 
     def pause_autonomous(self, message):
         rospy.loginfo("[TaskIO] pause autonomous %s" % message)
-        response = self.pf.encoder_response(Command.PAUSE_AUTONOMOUS, message['requestId'], ACK.SUCCESS)
+        response = self.pf.encoder_response(Command.PAUSE_AUTONOMOUS,
+                                            message['requestId'], ACK.SUCCESS)
         self.__client.write(response)
         self._service.task_pause()
 

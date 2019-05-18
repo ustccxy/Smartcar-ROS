@@ -44,12 +44,14 @@ private:
     ros::Subscriber sub_startPose, sub_endPose;
     ros::Publisher pub_path, pub_vis_path, pub_debug_path, pub_arrow_array;
     ros::Publisher pub_marker_start, pub_marker_end;
+    ros::Publisher pub_show_off;
 
     ros::Publisher pub_car_model;
     bool is_simulate_car;
 
     std::string path;
     bool if_debug;
+    bool if_show_off; // 用于在规划路径的时候展示所有的预定义路径
 
     double weight_data;
     double weight_smooth;
@@ -101,6 +103,7 @@ private:
     void marker_initial();
     void cfgCB(const global_planning::GlobalPlanningConfig &config, uint32_t level);
     bool validate(double dist, geometry_msgs::PoseStamped pose, std::vector<path_msgs::Cross> path_list);
+    void show_off();
 
 public:
     global_plan()
@@ -132,9 +135,11 @@ void global_plan::init()
     pnh.param<double>("cross_speed_limit", cross_speed_limit_, 1.0);
     pnh.param<double>("start_length", start_length, 5.0);
     pnh.param<double>("end_length", end_length, 5.0);
+    pnh.param<bool>("show_off", if_show_off, true);
 
     marker_initial();
 
+    pub_show_off = nh.advertise<visualization_msgs::MarkerArray>("/global_plan/defined_trj", 10);
     constract_Lane_Cross_vec(path);
 
     sub_startPose = nh.subscribe("/ndt/current_pose", 1, &GLOBAL_PLANNER::global_plan::update_current_pose, this);
@@ -299,6 +304,10 @@ void global_plan::readAllFiles(std::vector<std::string> files)
     {
         std::cout << "read in Lane.vec  with " << Lane_vec.size() << " lanes" << std::endl;
         std::cout << "read in Cross.vec with " << Cross_vec.size() << " crosses" << std::endl;
+    }
+    if (if_show_off)
+    {
+        show_off();
     }
     return;
 }
@@ -1270,6 +1279,95 @@ bool global_plan::validate(double dist, geometry_msgs::PoseStamped pose, std::ve
     if (min_length < dist)
         return false;
     return true;
+}
+
+void global_plan::show_off()
+{
+    int cnt = 0;
+    visualization_msgs::MarkerArray defined_trj;
+    for (path_msgs::Lane path : Lane_vec)
+    {
+        for (size_t i = 0; i < path.path.poses.size() - 1; i++)
+        {
+            geometry_msgs::PoseStamped p_c = path.path.poses[i];
+            geometry_msgs::PoseStamped p_n = path.path.poses[i + 1];
+            double yaw = std::atan2(p_n.pose.position.y - p_c.pose.position.y, p_n.pose.position.x - p_c.pose.position.x);
+            Eigen::AngleAxisd rollangle(0, Eigen::Vector3d::UnitX());
+            Eigen::AngleAxisd yawangle(yaw, Eigen::Vector3d::UnitZ());
+            Eigen::AngleAxisd pitchangle(0, Eigen::Vector3d::UnitY());
+            Eigen::Quaterniond q = rollangle * yawangle * pitchangle;
+            path.path.poses[i].pose.orientation.x = q.x();
+            path.path.poses[i].pose.orientation.y = q.y();
+            path.path.poses[i].pose.orientation.z = q.z();
+            path.path.poses[i].pose.orientation.w = q.w();
+        }
+        for (geometry_msgs::PoseStamped pose : path.path.poses)
+        {
+            visualization_msgs::Marker arrow = util::ARROW();
+            arrow.pose = pose.pose;
+            arrow.color.g = 1.0;
+            arrow.scale.x = 0.4;
+            arrow.scale.y = 0.2;
+            arrow.scale.z = 0.2;
+            arrow.id = cnt++;
+            defined_trj.markers.push_back(arrow);
+        }
+        visualization_msgs::Marker text = util::TEXT();
+        std::stringstream ss;
+        ss << "lane_" << path.id;
+        text.text = ss.str();
+        int mid = path.path.poses.size() / 2;
+        text.pose.position = path.path.poses[mid].pose.position;
+        text.pose.position.z += 1.0;
+        text.color.r = text.color.b = 1;
+        text.scale.x = text.scale.y = text.scale.z = 2.5;
+        text.id = cnt++;
+        defined_trj.markers.push_back(text);
+    }
+
+    for (path_msgs::Cross path : Cross_vec)
+    {
+        for (size_t i = 0; i < path.path.poses.size() - 1; i++)
+        {
+            geometry_msgs::PoseStamped p_c = path.path.poses[i];
+            geometry_msgs::PoseStamped p_n = path.path.poses[i + 1];
+            double yaw = std::atan2(p_n.pose.position.y - p_c.pose.position.y, p_n.pose.position.x - p_c.pose.position.x);
+            Eigen::AngleAxisd rollangle(0, Eigen::Vector3d::UnitX());
+            Eigen::AngleAxisd yawangle(yaw, Eigen::Vector3d::UnitZ());
+            Eigen::AngleAxisd pitchangle(0, Eigen::Vector3d::UnitY());
+            Eigen::Quaterniond q = rollangle * yawangle * pitchangle;
+            path.path.poses[i].pose.orientation.x = q.x();
+            path.path.poses[i].pose.orientation.y = q.y();
+            path.path.poses[i].pose.orientation.z = q.z();
+            path.path.poses[i].pose.orientation.w = q.w();
+        }
+        for (geometry_msgs::PoseStamped pose : path.path.poses)
+        {
+            visualization_msgs::Marker arrow = util::ARROW();
+            arrow.pose = pose.pose;
+            arrow.color.r = 1.0;
+            arrow.color.a = 1;
+            arrow.scale.x = 0.4;
+            arrow.scale.y = 0.2;
+            arrow.scale.z = 0.2;
+            arrow.id = cnt++;
+            defined_trj.markers.push_back(arrow);
+        }
+        visualization_msgs::Marker text = util::TEXT();
+        std::stringstream ss;
+        ss << "lane_" << path.id;
+        text.text = ss.str();
+        int mid = path.path.poses.size() / 2;
+        text.pose.position = path.path.poses[mid].pose.position;
+        text.pose.position.z += 1.0;
+        text.color.r = text.color.g = 1;
+        text.scale.x = text.scale.y = text.scale.z = 2.5;
+        text.id = cnt++;
+        defined_trj.markers.push_back(text);
+    }
+    ros::Duration(3.0).sleep();
+    pub_show_off.publish(defined_trj);
+    ROS_WARN_STREAM("publish defined path success");
 }
 
 } // namespace GLOBAL_PLANNER
