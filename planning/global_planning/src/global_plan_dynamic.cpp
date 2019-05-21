@@ -41,7 +41,7 @@ bool cmp_l(const path_msgs::Lane a, const path_msgs::Lane b)
 class global_plan
 {
 private:
-    ros::Subscriber sub_startPose, sub_endPose;
+    ros::Subscriber sub_startPose, sub_endPose, sub_direct_current_pose;
     ros::Publisher pub_path, pub_vis_path, pub_debug_path, pub_arrow_array;
     ros::Publisher pub_marker_start, pub_marker_end;
     ros::Publisher pub_show_off;
@@ -78,6 +78,7 @@ private:
     bool current_pose_initialed;
 
     void update_current_pose(const geometry_msgs::PoseStampedConstPtr &msg);
+    void direct_current_pose(const geometry_msgs::PoseWithCovarianceStamped::ConstPtr &msg);
 
     void constract_Lane_Cross_vec(const std::string path);
     void getAllFiles(const std::string path, std::vector<std::string> &files);
@@ -142,6 +143,7 @@ void global_plan::init()
     pub_show_off = nh.advertise<visualization_msgs::MarkerArray>("/global_plan/defined_trj", 10);
     constract_Lane_Cross_vec(path);
 
+    sub_direct_current_pose = nh.subscribe("/initialpose", 1, &GLOBAL_PLANNER::global_plan::direct_current_pose, this);
     sub_startPose = nh.subscribe("/ndt/current_pose", 1, &GLOBAL_PLANNER::global_plan::update_current_pose, this);
     sub_endPose = nh.subscribe("/move_base_simple/goal", 1, &GLOBAL_PLANNER::global_plan::endPose_cb, this);
     pub_path = nh.advertise<smartcar_msgs::Lane>("global_path", 1);
@@ -157,6 +159,14 @@ void global_plan::init()
     cfg_server.setCallback(cfg_callback);
 
     ros::spin();
+}
+
+void global_plan::direct_current_pose(const geometry_msgs::PoseWithCovarianceStamped::ConstPtr &msg)
+{
+    current_pose.header.frame_id = "map";
+    current_pose.pose = msg->pose.pose;
+    current_pose_initialed = true;
+    return;
 }
 
 void global_plan::update_current_pose(const geometry_msgs::PoseStampedConstPtr &msg)
@@ -1235,6 +1245,8 @@ void global_plan::smooth(smartcar_msgs::Lane &path, int start_index, int length,
 {
     double change = tolerance;
     int Iterations = 0;
+    smartcar_msgs::Lane path_origin;
+    path_origin.waypoints.assign(path.waypoints.begin(), path.waypoints.end());
     while (change >= tolerance)
     {
         change = 0.0;
@@ -1243,8 +1255,8 @@ void global_plan::smooth(smartcar_msgs::Lane &path, int start_index, int length,
             double xtemp = path.waypoints[i].pose.pose.position.x;
             double ytemp = path.waypoints[i].pose.pose.position.y;
 
-            path.waypoints[i].pose.pose.position.x += weight_data * (path.waypoints[i].pose.pose.position.x - path.waypoints[i].pose.pose.position.x);
-            path.waypoints[i].pose.pose.position.y += weight_data * (path.waypoints[i].pose.pose.position.y - path.waypoints[i].pose.pose.position.y);
+            path.waypoints[i].pose.pose.position.x += weight_data * (path_origin.waypoints[i].pose.pose.position.x - path.waypoints[i].pose.pose.position.x);
+            path.waypoints[i].pose.pose.position.y += weight_data * (path_origin.waypoints[i].pose.pose.position.y - path.waypoints[i].pose.pose.position.y);
 
             path.waypoints[i].pose.pose.position.x += weight_smooth * (path.waypoints[i - 1].pose.pose.position.x + path.waypoints[i + 1].pose.pose.position.x - (2.0 * path.waypoints[i].pose.pose.position.x));
             path.waypoints[i].pose.pose.position.y += weight_smooth * (path.waypoints[i - 1].pose.pose.position.y + path.waypoints[i + 1].pose.pose.position.y - (2.0 * path.waypoints[i].pose.pose.position.y));

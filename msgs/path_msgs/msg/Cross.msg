@@ -1,6 +1,6 @@
 int32 id
 float32 length
-# float32 weight
+float32 weight
 
 bool reverse        
 
