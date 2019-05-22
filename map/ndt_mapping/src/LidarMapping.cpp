@@ -875,7 +875,7 @@ void LidarMapping::points_callback(const sensor_msgs::PointCloud2::ConstPtr &inp
             double z = local_no_ground->points[i].z;
             double dist = std::sqrt(std::pow(x, 2) + std::pow(y, 2));
 
-            if (dist > 1.0 && dist < 10.0)
+            if (dist > 1.0 && dist < 30.0)
                 indices.indices.push_back(i);
         }
         pcl::ExtractIndices<pcl::PointXYZ> extractor;

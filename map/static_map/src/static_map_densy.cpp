@@ -34,17 +34,16 @@ int main(int argc, char **argv)
 
   ros::NodeHandle nh;
   ros::NodeHandle pnh("~");
-  ros::Publisher pub_map;
+  ros::Publisher pub_map = nh.advertise<sensor_msgs::PointCloud2>("/densy_map", 1);
   sensor_msgs::PointCloud2 msg_map;
   pcl::PointCloud<pcl::PointXYZ>::Ptr pcl_map(new pcl::PointCloud<pcl::PointXYZ>());
   ros::Duration duration;
-
   double param_duration;
   std::string param_pcd_path;
-  pnh.param<double>("duraion", param_duration, 1.0);
+  pnh.param<double>("duration", param_duration, 1.0);
   pnh.param<std::string>("pcd_file_path", param_pcd_path, "null");
-  pub_map = nh.advertise<sensor_msgs::PointCloud2>("/densy_map", 1);
   std::cout << "[static_map] densy file path: " << param_pcd_path << std::endl;
+  std::cout << "[static_map] duration: " << param_duration << std::endl;
 
   std::vector<std::string> files;
   getAllFiles(param_pcd_path, files);
@@ -55,28 +54,31 @@ int main(int argc, char **argv)
     pcl::PointCloud<pcl::PointXYZ>::Ptr temp(new pcl::PointCloud<pcl::PointXYZ>());
     std::stringstream ss;
     ss << param_pcd_path << f;
-    std::cout << "loading " << ss.str() << std::endl;
+    std::cout << "loading... " << ss.str() << std::endl;
     if (pcl::io::loadPCDFile(ss.str(), *temp) == -1)
     {
       ROS_ERROR("Failed to load pcd file: %s", ss.str());
       return (-1);
     }
     *pcl_map += *temp;
+    std::cout << "loaded " << ss.str() << " with " << temp->size() << " points" << std::endl;
+    ros::Duration(0.5).sleep();
   }
 
   pcl::toROSMsg(*pcl_map, msg_map);
   msg_map.header.frame_id = "map";
-  pub_map.publish(msg_map);
 
-  // duration.fromSec(param_duration);
+  duration.fromSec(param_duration);
+  ros::Duration(1.0).sleep();
 
-  // while (ros::ok())
-  // {
-  //   msg_map.header.stamp = ros::Time::now();
-  //   pub_map.publish(msg_map);
-
-  //   duration.sleep();
-  // }
+  while (ros::ok())
+  {
+    // msg_map.header.stamp = ros::Time::now();
+    ROS_WARN_STREAM("publish densy map with " << msg_map.width);
+    pub_map.publish(msg_map);
+    duration.sleep();
+    break; // 只发布一次
+  }
 
   return 0;
 }
