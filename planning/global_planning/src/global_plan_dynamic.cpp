@@ -1332,7 +1332,7 @@ void global_plan::show_off()
         text.pose.position = path.path.poses[mid].pose.position;
         text.pose.position.z += 1.0;
         text.color.r = text.color.b = 1;
-        text.scale.x = text.scale.y = text.scale.z = 2.5;
+        text.scale.x = text.scale.y = text.scale.z = 3.5;
         text.id = cnt++;
         defined_trj.markers.push_back(text);
     }
@@ -1367,13 +1367,13 @@ void global_plan::show_off()
         }
         visualization_msgs::Marker text = util::TEXT();
         std::stringstream ss;
-        ss << "lane_" << path.id;
+        ss << "cross_" << path.id;
         text.text = ss.str();
         int mid = path.path.poses.size() / 2;
         text.pose.position = path.path.poses[mid].pose.position;
         text.pose.position.z += 1.0;
-        text.color.r = text.color.g = 1;
-        text.scale.x = text.scale.y = text.scale.z = 2.5;
+        text.color.b = 1;
+        text.scale.x = text.scale.y = text.scale.z = 3.5;
         text.id = cnt++;
         defined_trj.markers.push_back(text);
     }
