@@ -19,9 +19,11 @@
 #include <sensor_msgs/PointCloud2.h>
 #include <tf/transform_listener.h>
 
-namespace utils {
+namespace utils
+{
 
-class RayGroundFilter {
+class RayGroundFilter
+{
 
     using PointNoI = pcl::PointXYZ;
 
@@ -33,11 +35,11 @@ private:
 
     double RADIAL_DIVIDER_ANGLE; // default: 0.18
 
-    double local_max_slope_; // degree default: 8 //max slope of the ground between points, degree
+    double local_max_slope_;   // degree default: 8 //max slope of the ground between points, degree
     double general_max_slope_; // degree  default: 5 //max slope of the ground in entire point cloud, degree
 
     double CLIP_HEIGHT; //截取掉高于雷达自身xx米的点
-    double minX; // 提取该范围内的点
+    double minX;        // 提取该范围内的点
     double maxX;
     double minY;
     double maxY;
@@ -45,7 +47,7 @@ private:
     double MIN_DISTANCE; // default: 2.4
 
     double concentric_divider_distance_; // default: 0.01 //0.1 meters default
-    double min_height_threshold_; // default: 0.05
+    double min_height_threshold_;        // default: 0.05
 
     double reclass_distance_threshold_; // default: 0.2
 
@@ -55,13 +57,14 @@ private:
 
     bool is_clip_height;
 
-    struct PointXYZIRTColor {
+    struct PointXYZIRTColor
+    {
         PointNoI point;
 
         float radius; //cylindric coords on XY Plane
-        float theta; //angle deg on XY plane
+        float theta;  //angle deg on XY plane
 
-        int radial_div; //index of the radial divsion to which this point belongs to
+        int radial_div;     //index of the radial divsion to which this point belongs to
         int concentric_div; //index of the concentric division to which this points belongs to
 
         int original_index; //index of this point in the source pointcloud
@@ -88,7 +91,7 @@ public:
         concentric_divider_distance_ = 0.02;
         MIN_DISTANCE = 0.0;
 
-        CLIP_HEIGHT = 1.0;
+        CLIP_HEIGHT = 0.5;
         minX = -1;
         maxX = 1;
         minY = -1;
@@ -98,16 +101,18 @@ public:
 
     ~RayGroundFilter(){};
     void clip_above(double clip_height, const pcl::PointCloud<PointNoI>::Ptr in,
-        const pcl::PointCloud<PointNoI>::Ptr out,
-        const pcl::PointIndices::Ptr up_indices)
+                    const pcl::PointCloud<PointNoI>::Ptr out,
+                    const pcl::PointIndices::Ptr up_indices)
     {
         pcl::ExtractIndices<PointNoI> cliper;
 
         cliper.setInputCloud(in);
         pcl::PointIndices indices;
 #pragma omp for // #pragma omp for语法OpenMP的并行化语法，即希望通过OpenMP并行化执行这条语句后的for循环，从而起到加速的效果。
-        for (size_t i = 0; i < in->points.size(); i++) {
-            if (in->points[i].z > clip_height) {
+        for (size_t i = 0; i < in->points.size(); i++)
+        {
+            if (in->points[i].z > clip_height)
+            {
                 indices.indices.push_back(i);
                 up_indices->indices.push_back(i);
             }
@@ -123,8 +128,8 @@ public:
      * @return: 
      */
     void remove_close_pt(double min_distance, const pcl::PointCloud<PointNoI>::Ptr in,
-        const pcl::PointCloud<PointNoI>::Ptr out,
-        const pcl::PointIndices::Ptr target_indices)
+                         const pcl::PointCloud<PointNoI>::Ptr out,
+                         const pcl::PointIndices::Ptr target_indices)
     {
         min_distance = min_distance * min_distance;
         pcl::ExtractIndices<PointNoI> cliper;
@@ -132,17 +137,23 @@ public:
         cliper.setInputCloud(in);
         pcl::PointIndices indices;
 #pragma omp for
-        for (int i = 0; i < in->points.size(); i++) {
+        for (int i = 0; i < in->points.size(); i++)
+        {
             double x = in->points[i].x;
             double y = in->points[i].y;
             double z = in->points[i].z;
-            if (min_distance > 0.5) {
+            if (min_distance > 0.5)
+            {
                 double dis = x * x + y * y;
-                if (dis > min_distance) {
+                if (dis > min_distance)
+                {
                     indices.indices.push_back(i);
                 }
-            } else {
-                if (minX > x || x > maxX || minY > y || y > maxY) {
+            }
+            else
+            {
+                if (minX > x || x > maxX || minY > y || y > maxY)
+                {
                     indices.indices.push_back(i);
                 }
             }
@@ -167,9 +178,9 @@ public:
     * @param[out] out_radial_ordered_clouds Vector of Points Clouds, each element will contain the points ordered
     */
     void XYZI_to_RTZColor(const pcl::PointCloud<PointNoI>::Ptr in_cloud,
-        PointCloudXYZIRTColor& out_organized_points,
-        std::vector<pcl::PointIndices>& out_radial_divided_indices,
-        std::vector<PointCloudXYZIRTColor>& out_radial_ordered_clouds)
+                          PointCloudXYZIRTColor &out_organized_points,
+                          std::vector<pcl::PointIndices> &out_radial_divided_indices,
+                          std::vector<PointCloudXYZIRTColor> &out_radial_ordered_clouds)
     {
         out_organized_points.resize(in_cloud->points.size());
         out_radial_divided_indices.clear();
@@ -177,12 +188,14 @@ public:
         out_radial_divided_indices.resize(radial_dividers_num_);
         out_radial_ordered_clouds.resize(radial_dividers_num_);
 
-        for (int i = 0; i < in_cloud->points.size(); i++) {
+        for (int i = 0; i < in_cloud->points.size(); i++)
+        {
             PointXYZIRTColor new_point;
             auto radius = (float)sqrt(
                 in_cloud->points[i].x * in_cloud->points[i].x + in_cloud->points[i].y * in_cloud->points[i].y);
             auto theta = (float)atan2(in_cloud->points[i].y, in_cloud->points[i].x) * 180 / M_PI;
-            if (theta < 0) {
+            if (theta < 0)
+            {
                 theta += 360;
             }
             //角度的微分
@@ -208,9 +221,10 @@ public:
 
         //将同一根射线上的点按照半径（距离）排序
 #pragma omp for
-        for (int i = 0; i < radial_dividers_num_; i++) {
+        for (int i = 0; i < radial_dividers_num_; i++)
+        {
             std::sort(out_radial_ordered_clouds[i].begin(), out_radial_ordered_clouds[i].end(),
-                [](const PointXYZIRTColor& a, const PointXYZIRTColor& b) { return a.radius < b.radius; });
+                      [](const PointXYZIRTColor &a, const PointXYZIRTColor &b) { return a.radius < b.radius; });
         }
     }
 
@@ -220,9 +234,9 @@ public:
     * @param out_ground_indices Returns the indices of the points classified as ground in the original PointCloud
     * @param out_no_ground_indices Returns the indices of the points classified as not ground in the original PointCloud
     */
-    void classify_pc(std::vector<PointCloudXYZIRTColor>& in_radial_ordered_clouds,
-        pcl::PointIndices& out_ground_indices,
-        pcl::PointIndices& out_no_ground_indices)
+    void classify_pc(std::vector<PointCloudXYZIRTColor> &in_radial_ordered_clouds,
+                     pcl::PointIndices &out_ground_indices,
+                     pcl::PointIndices &out_no_ground_indices)
     {
         out_ground_indices.indices.clear();
         out_no_ground_indices.indices.clear();
@@ -241,35 +255,51 @@ public:
                 float general_height_threshold = tan(DEG2RAD(general_max_slope_)) * in_radial_ordered_clouds[i][j].radius;
 
                 //for points which are very close causing the height threshold to be tiny, set a minimum value
-                if (points_distance < concentric_divider_distance_ || height_threshold < min_height_threshold_) {
+                if (points_distance < concentric_divider_distance_ || height_threshold < min_height_threshold_)
+                {
                     height_threshold = min_height_threshold_;
                 }
 
                 //check current point height against the LOCAL threshold (previous point)
-                if (current_height <= (prev_height + height_threshold) && current_height >= (prev_height - height_threshold)) {
+                if (current_height <= (prev_height + height_threshold) && current_height >= (prev_height - height_threshold))
+                {
                     //Check again using general geometry (radius from origin) if previous points wasn't ground
-                    if (!prev_ground) {
-                        if (current_height <= (-SENSOR_HEIGHT + general_height_threshold) && current_height >= (-SENSOR_HEIGHT - general_height_threshold)) {
+                    if (!prev_ground)
+                    {
+                        if (current_height <= (-SENSOR_HEIGHT + general_height_threshold) && current_height >= (-SENSOR_HEIGHT - general_height_threshold))
+                        {
                             current_ground = true;
-                        } else {
+                        }
+                        else
+                        {
                             current_ground = false;
                         }
-                    } else {
+                    }
+                    else
+                    {
                         current_ground = true;
                     }
-                } else {
+                }
+                else
+                {
                     //check if previous point is too far from previous one, if so classify again
-                    if (points_distance > reclass_distance_threshold_ && (current_height <= (-SENSOR_HEIGHT + height_threshold) && current_height >= (-SENSOR_HEIGHT - height_threshold))) {
+                    if (points_distance > reclass_distance_threshold_ && (current_height <= (-SENSOR_HEIGHT + height_threshold) && current_height >= (-SENSOR_HEIGHT - height_threshold)))
+                    {
                         current_ground = true;
-                    } else {
+                    }
+                    else
+                    {
                         current_ground = false;
                     }
                 }
 
-                if (current_ground) {
+                if (current_ground)
+                {
                     out_ground_indices.indices.push_back(in_radial_ordered_clouds[i][j].original_index);
                     prev_ground = true;
-                } else {
+                }
+                else
+                {
                     out_no_ground_indices.indices.push_back(in_radial_ordered_clouds[i][j].original_index);
                     prev_ground = false;
                 }
@@ -280,8 +310,8 @@ public:
         }
     }
 
-    void convert(const pcl::PointCloud<PointNoI>::Ptr& current_pc_ptr,
-        const pcl::PointCloud<PointNoI>::Ptr& no_ground_cloud_ptr)
+    void convert(const pcl::PointCloud<PointNoI>::Ptr &current_pc_ptr,
+                 const pcl::PointCloud<PointNoI>::Ptr &no_ground_cloud_ptr)
     {
         pcl::PointIndices::Ptr up_indices(new pcl::PointIndices());
         up_indices->indices.clear();
@@ -306,7 +336,7 @@ public:
         radial_dividers_num_ = ceil(360 / RADIAL_DIVIDER_ANGLE);
 
         XYZI_to_RTZColor(remove_close, organized_points,
-            radial_division_indices, radial_ordered_clouds);
+                         radial_division_indices, radial_ordered_clouds);
 
         pcl::PointIndices ground_indices, no_ground_indices;
 
@@ -318,7 +348,8 @@ public:
 
         extract_ground.setNegative(true); //true removes the indices, false leaves only the indices
         extract_ground.filter(*no_ground_cloud_ptr);
-        if (!is_clip_height) {
+        if (!is_clip_height)
+        {
             *no_ground_cloud_ptr += *up_pc_ptr;
         }
 
@@ -346,6 +377,6 @@ public:
         MIN_DISTANCE = min_distance;
     }
 }; //end
-};
+}; // namespace utils
 
 #endif

@@ -9,6 +9,9 @@
 
     <node pkg="ndt_mapping" type="fast_ndt_mapping_node" name="fast_ndt_mapping_node" output="screen">
         <rosparam file="$(find ndt_mapping)/params/params_ndt_mapping.yaml" command="load"/>
-        <param name="whole_map_folder" type="string" value="confirm it" />
+        <param name="planning_map_folder" type="string" value="/home/sin/Data/ros_bag/map/planning_map/" />
+        <param name="cost_map_folder" type="string" value="/home/sin/Data/ros_bag/map/cost_map/" />
+        <param name="costmap_voxel_size" type="double" value="0.15" />
+
     </node>
 </launch>

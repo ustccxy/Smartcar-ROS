@@ -201,20 +201,23 @@ private:
 	std::string _odom_topic;
 	std::string _lidar_topic;
 
-	bool is_publish_map_full;
-	bool is_publish_map_filterd_ground;
-	bool is_publish_map_for_costmap;
-
 	utils::RayGroundFilter filter;
 	pcl::PointCloud<Point> global_map_no_ground;
 	ros::Publisher pub_global_map_no_ground;
 	pcl::PointCloud<Point> global_map_for_costmap;
 	ros::Publisher pub_global_map_for_costmap;
 
-	bool is_publish_whole_map;
-	std::string whole_map_folder;
-	pcl::PointCloud<pcl::PointXYZI> whole_map;
-	ros::Publisher pub_whole_map;
+	bool is_publish_map_full;
+
+	bool is_publish_map_for_costmap;
+	double costmap_voxel_size;
+	std::string cost_map_folder;
+	pcl::PointCloud<pcl::PointXYZ> whole_cost_map;
+
+	bool is_publish_map_for_planning;
+	double planning_voxel_size;
+	std::string planning_map_folder;
+	pcl::PointCloud<pcl::PointXYZI> whole_planning_map;
 
 	// end:private
 
