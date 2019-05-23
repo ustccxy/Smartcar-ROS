@@ -544,11 +544,11 @@ void global_plan::startPose_cb(const geometry_msgs::PoseWithCovarianceStampedCon
 void global_plan::endPose_cb(const geometry_msgs::PoseStampedConstPtr &msg)
 {
     ROS_INFO_STREAM("Target Pose Handler");
-    if (util::distance2points(start_pose.pose.position, msg->pose.position) < 20)
-    {
-        ROS_WARN("Too close, please walk there");
-        return;
-    }
+    // if (util::distance2points(start_pose.pose.position, msg->pose.position) < 20)
+    // {
+    //     ROS_WARN("Too close, please walk there");
+    //     return;
+    // }
     marker_end.pose = msg->pose;
     pub_marker_end.publish(marker_end);
 
@@ -693,7 +693,8 @@ void global_plan::endPose_cb(const geometry_msgs::PoseStampedConstPtr &msg)
     result_path.waypoints.clear();
     result_path.header.frame_id = "map";
     convert_result_to_path(&result_path);
-    smartcar_msgs::Lane res_path = smooth_path(result_path);
+    // smartcar_msgs::Lane res_path = smooth_path(result_path);
+    smartcar_msgs::Lane res_path = result_path;
     res_path.header.frame_id = "map";
     pub_path.publish(res_path);
 

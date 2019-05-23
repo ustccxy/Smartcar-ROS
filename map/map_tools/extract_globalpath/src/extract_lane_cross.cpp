@@ -329,7 +329,7 @@ void WHOLE_PATH::extract_path::show_tests(std::string label, int id, std::vector
     text.id = cnt_text++;
     text.type = visualization_msgs::Marker::TEXT_VIEW_FACING;
 
-    text.scale.z = 2.0;
+    text.scale.z = 0.5;
     text.color.g = 1;  // color range: [0,1]
     text.color.b = 0;
     text.color.r = 0;

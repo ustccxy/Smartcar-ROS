@@ -163,6 +163,7 @@ void global_plan::init()
 
 void global_plan::direct_current_pose(const geometry_msgs::PoseWithCovarianceStamped::ConstPtr &msg)
 {
+    ROS_INFO_STREAM("received direct current pose");
     current_pose.header.frame_id = "map";
     current_pose.pose = msg->pose.pose;
     current_pose_initialed = true;
@@ -575,10 +576,10 @@ void global_plan::endPose_cb(const geometry_msgs::PoseStampedConstPtr &msg)
 {
     ROS_INFO_STREAM("Target Pose Handler");
     if (util::distance2points(start_pose.pose.position, msg->pose.position) < 20)
-    {
-        ROS_WARN("Too close, please walk there");
-        return;
-    }
+    // {
+    //     ROS_WARN("Too close, please walk there");
+    //     return;
+    // }
     marker_end.pose = msg->pose;
     pub_marker_end.publish(marker_end);
 
@@ -1332,7 +1333,7 @@ void global_plan::show_off()
         text.pose.position = path.path.poses[mid].pose.position;
         text.pose.position.z += 1.0;
         text.color.r = text.color.b = 1;
-        text.scale.x = text.scale.y = text.scale.z = 3.5;
+        text.scale.x = text.scale.y = text.scale.z = 0.5;
         text.id = cnt++;
         defined_trj.markers.push_back(text);
     }
@@ -1373,13 +1374,15 @@ void global_plan::show_off()
         text.pose.position = path.path.poses[mid].pose.position;
         text.pose.position.z += 1.0;
         text.color.b = 1;
-        text.scale.x = text.scale.y = text.scale.z = 3.5;
+        text.scale.x = text.scale.y = text.scale.z = 0.5;
         text.id = cnt++;
         defined_trj.markers.push_back(text);
     }
     ros::Duration(3.0).sleep();
     pub_show_off.publish(defined_trj);
     ROS_WARN_STREAM("publish defined path success");
+    
+
 }
 
 } // namespace GLOBAL_PLANNER
