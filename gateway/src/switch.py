@@ -122,13 +122,11 @@ class SectionTask:
         # print action
         # print("action: type: %s action.trj : %s" % (action['type'], str(ActionType.TRAJECTORY)))
         if action['type'] == "REPLAY":
-            return ReplaySectionTask(section_id, v, outset, goal,
-                                     action['instructions'])
+            return ReplaySectionTask(section_id, v, outset, goal,action['instructions'])
         elif action['type'] == "LANE":
             return LaneSectionTask(section_id, v, outset, goal)
         elif action['type'] == "TRJ":
-            return TrjSectionTask(section_id, v, outset, goal,
-                                  action['points'])
+            return TrjSectionTask(section_id, v, outset, goal,action['points'])
         elif action['type'] == "SITE":
             return SiteSectionTask(section_id, v, outset, goal, action['site'])
         elif action['type'] == "LIDAR":
@@ -288,7 +286,11 @@ class LidarSectionTask(SectionTask):
     def make_global_path(self):
         global_path = Lane()
         global_path.header.frame_id = "map"
+        cnt = 0
         for p in self.waypoints:
+            print cnt
+            print(p)
+            cnt += 1
             point = Waypoint()
             point.speed_limit = float(p['speed_limit'])
             point.is_lane = int(p['is_lane'])
@@ -348,10 +350,7 @@ class DrivingTask:
     def __init__(self, task_id, speed, route_json_o):
         self.task_id = task_id
         self.speed = speed
-        # print self.speed
         self.sections = self.to_sections(route_json_o)
-        print "route_json_o"
-        print route_json_o
         # print self.sections
         self.cur = -1
         self.state = TaskState.CREATED
@@ -517,11 +516,11 @@ class DrivingTaskService:
         assert isinstance(msg, CrossLock)
         if msg.type == CrossLock().REQUEST_LOCK:
             data = {"current_id": "lane_" + str(msg.lane_id), "next_id": "cross_" + str(msg.cross_id)}
-            print("[switch.py] now request lock from cloud", data)
+            # print("[switch.py] now request lock from cloud", data)
             self._event_bus.put(Event(EventType.Request_CrossLockEvent, data), block=True)
         elif msg.type == CrossLock().RELEASE_LOCK:
             data = {"current_id": "cross_" + str(msg.cross_id), "next_id": "lane_" + str(msg.lane_id)}
-            print("[switch.py] now release lock to cloud", data)
+            # print("[switch.py] now release lock to cloud", data)
             self._event_bus.put(Event(EventType.Release_CrossLockEvent, data), block=True)
 
     def on_task_info(self, section_task_state):
@@ -562,8 +561,9 @@ class DrivingTaskService:
             msg.data = CloudInterface.NORMAL_RUN
             self._cloudInterface_pub.publish(msg)
 
-    def response_lock(self):
-        if self._current_task:
+    def response_lock(self, message):
+        print("[switch.py] received message ",message)
+        if self._current_task and message['data']['command'] == "RUN":
             msg = CloudInterface()
             msg.data = CloudInterface.CROSS_PASS
             self._cloudInterface_pub.publish(msg)
