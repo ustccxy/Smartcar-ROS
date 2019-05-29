@@ -46,7 +46,7 @@ void PurePursuitNode::initForROS()
     sub_currentpose = nh_.subscribe("/ndt/current_pose", 10, &PurePursuitNode::callbackFromCurrentPose, this);
     sub_speed = nh_.subscribe("vehicle_status", 10, &PurePursuitNode::callbackFromCurrentVelocity, this);
     sub_state_change = nh_.subscribe("SmartcarState", 1, &PurePursuitNode::callbackFromStateChange, this);
-    cur_state = "STOP";
+    cur_state = smartcar_msgs::State().PAUSE;
 
     // setup publisher
     pub_ctl = nh_.advertise<geometry_msgs::Twist>("ctrl_cmd", 10);
@@ -54,6 +54,7 @@ void PurePursuitNode::initForROS()
     pub_path = nh_.advertise<nav_msgs::Path>("followed_path", 10);
     pub_car_model = nh_.advertise<visualization_msgs::Marker>("car_model", 10);
     pub_yunle_control = nh_.advertise<can_msgs::ecu>("ecu", 50);
+    pub_cross_lock = nh_.advertise<smartcar_msgs::CrossLock>("CrossLock", 1);
 }
 
 void PurePursuitNode::run()
@@ -200,6 +201,7 @@ void PurePursuitNode::getNextWaypoint()
                                 cross_in = false;
                                 is_in_cross = true;
                                 next_waypoint_number_ = lock_index;
+                                request_cross_lock();
                             }
 
                             // 记下车辆出弯道的点的index
@@ -213,6 +215,7 @@ void PurePursuitNode::getNextWaypoint()
                             {
                                 cross_out = false;
                                 is_in_cross = false;
+                                release_cross_lock();
                             }
                         }
                         // 判断是否在直线上
@@ -433,7 +436,7 @@ double PurePursuitNode::calcCurvature(geometry_msgs::Point target)
 
 void PurePursuitNode::publishControlCommandStamped(const bool &can_get_curvature, const double &curvature)
 {
-    if (cur_state != "RUN")
+    if (cur_state != smartcar_msgs::State().RUN)
     {
         if (is_yunleCar)
         {
@@ -542,6 +545,12 @@ void PurePursuitNode::callbackFromCurrentPose(const geometry_msgs::PoseStampedCo
 void PurePursuitNode::callbackFromStateChange(const smartcar_msgs::StateConstPtr &msg)
 {
     cur_state = msg->main_state;
+    if(cur_state == smartcar_msgs::State().RUN){
+        std::cout << "waypoint_follower current state: RUN" << std::endl;
+    }
+    else if(cur_state == smartcar_msgs::State().PAUSE){
+        std::cout << "waypoint_follower current state: PAUSE" << std::endl;
+    }
 }
 
 void PurePursuitNode::callbackFromCurrentVelocity(const can_msgs::vehicle_status &msg)
@@ -726,5 +735,25 @@ void PurePursuitNode::visualInRviz()
     msg_car_marker.mesh_use_embedded_materials = true;
     //msg_car_marker.mesh_resource = "package://car_model/ferrari/dae.DAE";
     //pub_car_model.publish(msg_car_marker);
+}
+
+void PurePursuitNode::request_cross_lock()
+{
+    smartcar_msgs::CrossLock msg;
+    msg.header.stamp = ros::Time::now();
+    msg.type = smartcar_msgs::CrossLock().REQUEST_LOCK;
+    msg.lane_id = current_waypoints_[clearest_points_index].lane_id;
+    msg.cross_id = current_waypoints_[next_waypoint_number_].cross_id;
+    pub_cross_lock.publish(msg);
+}
+
+void PurePursuitNode::release_cross_lock()
+{
+    smartcar_msgs::CrossLock msg;
+    msg.header.stamp = ros::Time::now();
+    msg.type = smartcar_msgs::CrossLock().RELEASE_LOCK;
+    msg.lane_id = current_waypoints_[clearest_points_index].cross_id;
+    msg.cross_id = current_waypoints_[next_waypoint_number_].lane_id;
+    pub_cross_lock.publish(msg);
 }
 } // namespace waypoint_follower

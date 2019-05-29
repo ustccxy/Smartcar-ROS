@@ -17,7 +17,8 @@
     <!-- <include file="$(find razor_imu_9dof)/launch/razor-pub.launch" />-->
 
     <!-- <include file="$(find odom_imu)/launch/odom_imu.launch" /> -->
-
+    <include file="$(find gateway)/launch/test_gateway.launch" />
+    <include file="$(find state_machine)/launch/state_machine.launch" />
 
 
     <node pkg="map_server" type="map_server" name="map_server_node" args="$(find static_map)/map_file/map.yaml"/>
@@ -34,15 +35,6 @@
     <!-- <include file="$(find cv_camera)/launch/cv_camera_driver.launch" /> -->
 
     <node pkg="rviz" type="rviz" name="Rviz_for_extract_path" args="-d $(find global_planning)/rviz/global_plan_lanecross.rviz" />
-
-    <!-- <node pkg="global_planning" type="global_plan_node" name="Global_planner_with_defined_paths" output="screen">
-        <param name="file_path" value="$(find global_planning)/path_file/" />
-        <param name="debug" value="true" />
-        <param name="weight_data" value="0.47" />
-        <param name="weight_smooth" value="0.2" />
-        <param name="tolerance" value="0.1" />
-        <param name="Visualize_Simulation" value="false" />
-    </node> -->
 
     <node pkg="global_planning" type="global_plan_dynamic" name="Global_planner_with_defined_paths" output="screen">
         <param name="file_path" value="$(find global_planning)/path_file_Yunlecar/" />

@@ -47,6 +47,8 @@ class EventType(Enum):
     ConnectionDisconnectedEvent = 0x12
     DataReceivedEvent = 0x13
     TaskFinishedEvent = 0x20
+    Request_CrossLockEvent = 0x14
+    Release_CrossLockEvent = 0x15
 
 
 class Event:

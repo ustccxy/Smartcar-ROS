@@ -93,6 +93,9 @@ class Command:
     TELE_REPORT = 0x24
     PAUSE_AUTONOMOUS = 0x31
     CONTINUE_AUTONOMOUS = 0x32
+    REQUEST_LOCK = 0x41
+    RESPONSE_LOCK = 0x42
+    RELEASE_LOCK = 0x43
 
 
 class App:
@@ -141,24 +144,22 @@ class App:
         self._register(Command.TELE_CONTROL, self.send_control_command_to_can)
         self._register(Command.PAUSE_AUTONOMOUS, self.pause_autonomous)
         self._register(Command.CONTINUE_AUTONOMOUS, self.continue_autonomous)
+        self._register(Command.RESPONSE_LOCK, self.response_lock)
 
     def _register_event_handler(self, eventType, func):
         self._event_handler_map[eventType] = func
 
     def _add_event_handler(self):
-        self._register_event_handler(EventType.ConnectionMadeEvent,
-                                     self.on_connection_made)
-        self._register_event_handler(EventType.DataReceivedEvent,
-                                     self.on_data_received)
-        self._register_event_handler(EventType.ConnectionDisconnectedEvent,
-                                     self.on_disconnected)
-        self._register_event_handler(EventType.TaskFinishedEvent,
-                                     self.on_task_finished)
+        self._register_event_handler(EventType.ConnectionMadeEvent, self.on_connection_made)
+        self._register_event_handler(EventType.DataReceivedEvent, self.on_data_received)
+        self._register_event_handler(EventType.ConnectionDisconnectedEvent, self.on_disconnected)
+        self._register_event_handler(EventType.TaskFinishedEvent, self.on_task_finished)
+        self._register_event_handler(EventType.Request_CrossLockEvent, self.on_request_crosslock)
+        self._register_event_handler(EventType.Release_CrossLockEvent, self.on_release_crosslock)
 
     def dispatch(self, msg):
         message = json.loads(msg)
         cmd = int(message["type"])
-        print("[app.py:161] received message type: ", cmd)
         func = self._handler_map.get(cmd)
         if func:
             func(message)
@@ -177,8 +178,8 @@ class App:
 
             # 该处定义的定时任务包括 1.发送心跳消息 2. 发送车辆状态 3. 发送车辆位置
             self._heartbeat_timeout_job = "heartbeat_job"
-            self.timer.submit_periodical_job(self._send_heartbeat, 60,
-                                             self._heartbeat_timeout_job)
+            self.timer.submit_periodical_job(
+                self._send_heartbeat, 60, self._heartbeat_timeout_job)
 
             self._tele_report_job = "tele_report_job"
             # self.timer.submit_periodical_job(self._send_tele_report, 0.5, self._tele_report_job)
@@ -210,15 +211,12 @@ class App:
     def on_mode_change(self, message):
         rospy.loginfo("[TaskIO] handle mode change %s " % message)
         self.__client.write(
-            self.pf.encoder_response(Command.MODE_CHANGE, message['requestId'],
-                                     ACK.SUCCESS))
+            self.pf.encoder_response(Command.MODE_CHANGE, message['requestId'], ACK.SUCCESS))
 
     def on_module_check(self, message):
         response = self.monitor.get_car_status()
-        data = self.pf.encoder_response(Command.MODULE_CHECK,
-                                        int(message['requestId']),
-                                        ACK.SUCCESS,
-                                        data=response)
+        data = self.pf.encoder_response(Command.MODULE_CHECK, int(
+            message['requestId']), ACK.SUCCESS, data=response)
         self.__client.write(data)
 
     def prepare_autonomous(self, message):
@@ -278,6 +276,13 @@ class App:
         self.__client.write(response)
         self._service.task_continue()
 
+    def response_lock(self, message):
+        respy.loginfo("[TaskIO] Response Lock %s" % message)
+        response = self.pf.encoder_response(
+            Command.RESPONSE_LOCK, message['requestId'], ACK.SUCCESS)
+        self.__client.write(response)
+        self._service.response_lock()
+
     def pause_autonomous(self, message):
         rospy.loginfo("[TaskIO] pause autonomous %s" % message)
         response = self.pf.encoder_response(Command.PAUSE_AUTONOMOUS,
@@ -310,6 +315,18 @@ class App:
 
     def on_data_received(self, event):
         self.dispatch(event.data)
+
+    # 向云端请求路口锁
+    def on_request_crosslock(self, event):
+        rospy.loginfo("request CrossLock, {}".format(event))
+        response = self.pf.encoder_request(Command.REQUEST_LOCK, event.data)
+        self.__client.write(response)
+
+    # 向云端释放路口锁
+    def on_release_crosslock(self, event):
+        rospy.loginfo("release CrossLock, {}".format(event))
+        response = self.pf.encoder_request(Command.RELEASE_LOCK, event.data)
+        self.__client.write(response)
 
     def on_task_finished(self, event):
         rospy.loginfo("task finished, {}".format(event))

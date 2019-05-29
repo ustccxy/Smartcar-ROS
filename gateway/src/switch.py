@@ -9,7 +9,7 @@ from track_msgs.msg import LaneSection, ReplaySection, TaskShutdown, TrjSection,
     SiteSection
 from can_msgs.msg import ECU
 from common import EventType, Event
-from smartcar_msgs.msg import Lane, Waypoint, State
+from smartcar_msgs.msg import Lane, Waypoint, State, CloudInterface, CrossLock
 
 
 # data:
@@ -304,6 +304,7 @@ class LidarSectionTask(SectionTask):
             global_path.waypoints.append(point)
         return global_path
 
+
 class SiteSectionTask(SectionTask):
     """
     """
@@ -461,8 +462,9 @@ class DrivingTaskService:
         self._stop_pub = rospy.Publisher("TaskShutdown", TaskShutdown, queue_size=10)
         self._ecu_pub = rospy.Publisher("ecu", ECU, queue_size=10)
         self._global_path_pub = rospy.Publisher("global_path", Lane, queue_size=1)
-        self._state_change_pub = rospy.Publisher("SmartcarState", State, queue_size=1)
+        self._cloudInterface_pub = rospy.Publisher("CloudInterface", CloudInterface, queue_size=1)
         rospy.Subscriber("SectionTaskState", SectionTaskState, self.on_task_info, queue_size=10)
+        rospy.Subscriber("ToCloudLock", CrossLock, self.on_lock_change, queue_size=1)
 
     def is_free(self):
         return self._current_task is None
@@ -511,6 +513,17 @@ class DrivingTaskService:
             self.report_finished()
             self._current_task = None
 
+    def on_lock_change(self, msg):
+        assert isinstance(msg, CrossLock)
+        if msg.type == CrossLock().REQUEST_LOCK:
+            data = {"current_id": "lane_" + str(msg.lane_id), "next_id": "cross_" + str(msg.cross_id)}
+            print("[switch.py] now request lock from cloud", data)
+            self._event_bus.put(Event(EventType.Request_CrossLockEvent, data), block=True)
+        elif msg.type == CrossLock().RELEASE_LOCK:
+            data = {"current_id": "cross_" + str(msg.cross_id), "next_id": "lane_" + str(msg.lane_id)}
+            print("[switch.py] now release lock to cloud", data)
+            self._event_bus.put(Event(EventType.Release_CrossLockEvent, data), block=True)
+
     def on_task_info(self, section_task_state):
         """
         :param section_task_state:
@@ -535,21 +548,25 @@ class DrivingTaskService:
 
     def report_finished(self):
         """"""
-        self._event_bus.put(Event(EventType.TaskFinishedEvent,
-                                  self._current_task.get_task_state()),
-                            block=True)
+        self._event_bus.put(Event(EventType.TaskFinishedEvent, self._current_task.get_task_state()), block=True)
 
     def task_pause(self):
         if self._current_task:
-            state = State()
-            state.main_state = "PAUSE"
-            self._state_change_pub.publish(state)
+            msg = CloudInterface()
+            msg.data = CloudInterface.NORMAL_PAUSE
+            self._cloudInterface_pub.publish(msg)
 
     def task_continue(self):
         if self._current_task:
-            state = State()
-            state.main_state = "RUN"
-            self._state_change_pub.publish(state)
+            msg = CloudInterface()
+            msg.data = CloudInterface.NORMAL_RUN
+            self._cloudInterface_pub.publish(msg)
+
+    def response_lock(self):
+        if self._current_task:
+            msg = CloudInterface()
+            msg.data = CloudInterface.CROSS_PASS
+            self._cloudInterface_pub.publish(msg)
 
     def stop(self):
         if self._current_task:

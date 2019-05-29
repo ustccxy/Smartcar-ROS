@@ -32,8 +32,9 @@ add_message_files(
         TrafficLightResultArray.msg
         ImageLaneObjects.msg
         DiffSonic.msg
-
-
+        CloudInterface.msg
+        UserInterface.msg
+        CrossLock.msg
 )
 
 generate_messages(

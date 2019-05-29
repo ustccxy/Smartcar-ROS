@@ -26,6 +26,7 @@
 #include <visualization_msgs/Marker.h>
 #include <visualization_msgs/MarkerArray.h>
 #include <smartcar_msgs/State.h>
+#include <smartcar_msgs/CrossLock.h>
 
 namespace waypoint_follower
 {
@@ -40,11 +41,12 @@ private:
     ros::Publisher pub_ctl, pub_target;
     ros::Publisher pub_path, pub_car_model;
     ros::Publisher pub_yunle_control;
+    ros::Publisher pub_cross_lock;
 
     // subscriber
     ros::Subscriber sub_currentpose, sub_lane, sub_speed, sub_state_change;
 
-    std::string cur_state;
+    uint8_t cur_state;
 
     // constant
     const int LOOP_RATE_; // processing frequency
@@ -143,6 +145,9 @@ public:
     {
         return deg * M_PI / 180;
     }
+
+    void request_cross_lock();
+    void release_cross_lock();
 };
 
 } // namespace waypoint_follower
